@@ -197,6 +197,51 @@ const budget = new TokenBudget(redis, { maxTokens: 100_000, periodSeconds: 86400
 const sessions = new SessionStore(redis, { ttl: 1800 })
 ```
 
+## 🔌 ProvisionPlugin — API Gateway Client
+
+The `ProvisionPlugin` is a generic, endpoint-agnostic API client for authenticated API access. It handles auth injection, rate limiting, and deployment-scoped requests.
+
+```typescript
+import { ProvisionPlugin } from 'tekimax-ts'
+
+const plugin = new ProvisionPlugin({
+    apiUrl: 'https://your-api.example.com',
+    apiKey: 'your-api-key',
+    deploymentId: 'dep_abc123',  // Scopes requests to this deployment
+})
+
+// Initialize
+await plugin.initialize()
+
+// Create typed API namespaces
+const naics = plugin.api('/api/naics')
+const ocr = plugin.api('/api/ocr')
+
+// Use the namespace
+const results = await naics.get('/search', { q: 'software' })
+const sectors = await naics.get('/sectors')
+const code = await naics.get('/codes/541511')
+
+// OCR
+const extracted = await ocr.post('/', formData)
+```
+
+### Features
+- **Auth Injection**: Automatically adds `X-API-Key` and `X-Deployment-ID` headers
+- **Rate Limiting**: Built-in client-side rate limiting (configurable)
+- **Request Timeouts**: Configurable timeout per request
+- **Lifecycle Hooks**: `initialize()` and `destroy()` for resource management
+- **Endpoint Agnostic**: Works with any REST API — no domain-specific code
+
+### Security Model
+
+| Header | Purpose |
+|--------|---------|
+| `X-API-Key` | Authenticates the request |
+| `X-Deployment-ID` | Identifies the deployment + authorizes API access |
+
+The API server validates that the deployment exists and has the requested API feature enabled in its `enabledApis` list.
+
 ## 🗺️ Roadmap
 
 | Feature | Description | Status |
@@ -206,6 +251,7 @@ const sessions = new SessionStore(redis, { ttl: 1800 })
 | **Real-time SSE Streaming** | Native SDK token streaming, `StreamChunk` event typing, and full React hooks support (`useChat`). | ✅ Shipped |
 | **Redis Adapter** | Optional response caching, rate limiting, token budget tracking, and session storage with any Redis client. | ✅ Shipped |
 | **Observability** | Telemetry and tracing via `plugins` architecture. | ✅ Shipped |
+| **ProvisionPlugin** | Endpoint-agnostic API gateway client with deployment-scoped auth. | ✅ Shipped |
 | **Batch API** | Queue thousands of requests and retrieve results asynchronously. | 🔜 Planned |
 | **Edge Runtime** | Cloudflare Workers / Deno support. | 🔜 Planned |
 | **Assistants / Threads** | Stateful conversation management with persistence. | 🔜 Planned |
