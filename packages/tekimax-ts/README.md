@@ -37,7 +37,7 @@ OMAT provides three interrelated public goods:
 |-----------|-------------|---------|
 | **Assessment Pipeline SDK** | Configurable rubric schemas, feedback generation pipelines, and model-agnostic evaluation interfaces validated against learning science constructs. | Apache 2.0 |
 | **Formative Assessment Benchmark Suite** | Standardized evaluation measuring AI performance across accuracy, fairness, learning progression alignment, and actionability. | Apache 2.0 |
-| **Multimodal Student Response Dataset** | De-identified student work across written, spoken, and drawn modalities — annotated by expert educators and aligned to Common Core and NGSS standards. | CC-BY-4.0 |
+| **Multimodal Student Response Dataset** *(planned)* | A planned collection of de-identified learner work across written, spoken, and drawn modalities — to be annotated by expert educators and aligned to Common Core and NGSS standards. | CC-BY-4.0 |
 
 ### Coming to tekimax-omat
 
@@ -49,11 +49,11 @@ OMAT provides three interrelated public goods:
 - **`LearningProgressionPlugin`** — Map student responses to developmental learning sequences
 - **Formative benchmarks** — Run standardized evaluations for accuracy, fairness, actionability, and alignment
 - **Provider-agnostic evaluation** — Benchmark any AI system, regardless of provider
-- **Multimodal dataset access** — Load annotated student response data directly from the SDK
+- **Multimodal dataset access** — *(Planned)* Load annotated student response data directly from the SDK
 
-> **Equity-Centered by Design** — OMAT centers multilingual learners, individuals with disabilities, and communities that need it most at every level. Multimodal inputs like speech and drawing ensure that anyone who can't yet express ideas in writing can still demonstrate what they know.
 
-OMAT was inspired by the vision set forward by [Digital Promise](https://digitalpromise.org) and the [K-12 AI Infrastructure Program](https://k12-ai-infrastructure.org/faq-march-8th-rfp/). Their proposal demonstrated that AI in education deserves shared, open infrastructure — and OMAT extends that vision beyond K–12 to any sector where assessment quality and equity matter.
+
+OMAT was inspired by the vision set forward by [Digital Promise](https://digitalpromise.org) and the [K-12 AI Infrastructure Program](https://k12-ai-infrastructure.org/faq-march-8th-rfp/). Their proposal demonstrated that AI in education deserves shared, open tooling — and OMAT extends that vision beyond K–12 to any sector where assessment quality and equity matter.
 
 ---
 

@@ -74,7 +74,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-lg text-muted-foreground mb-12 max-w-md leading-relaxed">
-                <span className="font-mono text-green-400 font-bold">[<span className="bg-foreground text-purple-400">OMAT</span>]</span> Open-source AI infrastructure for organizations building software for good — education, workforce development, nonprofits, civic tech, and healthcare. Built on <span className="font-bold text-foreground">tekimax-omat</span>.
+                <span className="font-mono text-green-400 font-bold">[<span className="bg-foreground text-purple-400">OMAT</span>]</span> Open-source AI SDK for organizations building software for good — education, workforce development, nonprofits, civic tech, and healthcare. Built on <span className="font-bold text-foreground">tekimax-omat</span>.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -175,18 +175,13 @@ for await (const chunk of client.text.chat.completions.createStream({
                 </div>
                 <div className="p-8">
                   <div className="text-purple-500 text-xs font-bold uppercase tracking-wider mb-3">03</div>
-                  <h3 className="font-bold uppercase tracking-wide mb-3">Multimodal Dataset</h3>
+                  <h3 className="font-bold uppercase tracking-wide mb-3">Multimodal Dataset <span className="text-[10px] font-normal text-muted-foreground tracking-wider">(Coming Soon)</span></h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    De-identified student work across written, spoken, and drawn modalities — annotated by expert educators. Aligned to Common Core and NGSS. Licensed CC-BY-4.0.
+                    A planned collection of de-identified learner work across written, spoken, and drawn modalities — to be annotated by expert educators and aligned to Common Core and NGSS. Will be licensed CC-BY-4.0.
                   </p>
                 </div>
               </div>
 
-              <div className="mt-8 border border-amber-600/30 bg-amber-600/5 p-6">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  <span className="text-amber-600 font-bold uppercase tracking-wider text-xs">Equity-Centered by Design</span> — OMAT centers multilingual learners, individuals with disabilities, and communities that need it most. Multimodal inputs like speech and drawing ensure anyone who can&apos;t yet express ideas in writing can still demonstrate what they know.
-                </p>
-              </div>
 
               <p className="mt-6 text-xs text-muted-foreground">
                 OMAT follows the vision set forward by{' '}
@@ -197,7 +192,7 @@ for await (const chunk of client.text.chat.completions.createStream({
                 <a href="https://k12-ai-infrastructure.org/faq-march-8th-rfp/" target="_blank" rel="noreferrer" className="underline hover:text-foreground transition-colors">
                   K-12 AI Infrastructure Program
                 </a>
-                {' '}— their proposal inspired OMAT&apos;s mission: that AI-powered assessment deserves shared, open infrastructure, and that vision extends beyond K–12 to any sector where feedback quality and equity matter.
+                {' '}— their proposal inspired OMAT&apos;s mission: that AI-powered assessment deserves shared, open tooling, and that vision extends beyond K–12 to any sector where feedback quality and equity matter.
               </p>
             </div>
           </div>
