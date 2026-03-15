@@ -10,7 +10,7 @@ The `FallbackProvider` tries providers in order. If the first one fails, it auto
 ## Basic Usage
 
 ```typescript
-import { Tekimax, FallbackProvider, OpenAIProvider, AnthropicProvider, GeminiProvider } from 'tekimax-ts'
+import { Tekimax, FallbackProvider, OpenAIProvider, AnthropicProvider, GeminiProvider } from 'tekimax-omat'
 
 const provider = new FallbackProvider([
   new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! }),
@@ -92,7 +92,7 @@ for await (const chunk of client.text.generateStream({
 Stack `FallbackProvider` with retry and middleware for production resilience:
 
 ```typescript
-import { FallbackProvider, createRetryProvider, wrapProvider, loggingMiddleware } from 'tekimax-ts'
+import { FallbackProvider, createRetryProvider, wrapProvider, loggingMiddleware } from 'tekimax-omat'
 
 // Each provider retries 3 times before the fallback kicks in
 const resilientOpenAI = createRetryProvider(new OpenAIProvider({ apiKey: '...' }), { maxRetries: 3 })

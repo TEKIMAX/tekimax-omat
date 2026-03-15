@@ -1,5 +1,5 @@
 import type { AIProvider } from './adapter'
-import type { GenerateTextResult, Message, Tool, TekimaxPlugin, PluginContext } from './types'
+import type { GenerateTextResult, ChatResult, Message, Tool, TekimaxPlugin, PluginContext } from './types'
 
 export interface GenerateTextOptions {
     model: string
@@ -21,6 +21,7 @@ export async function generateText({
     let currentMessages = [...options.messages]
     let currentModel = model
     let steps = 0
+    let lastResult: ChatResult | undefined
 
     // Transform tools map to array for caching/adapter
     const toolDefinitions = tools ? Object.values(tools) : undefined
@@ -51,6 +52,7 @@ export async function generateText({
             maxTokens,
             signal,
         })
+        lastResult = result
 
         for (const plugin of plugins) {
             if (plugin.afterResponse) await plugin.afterResponse(context, result)
@@ -71,6 +73,7 @@ export async function generateText({
                 toolResults: [],
                 finishReason: 'stop',
                 usage: result.usage || { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+                aiTag: result.aiTag,
             }
         }
 
@@ -121,5 +124,6 @@ export async function generateText({
         finishReason: 'length',
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         warnings: ['Max steps reached'],
+        aiTag: lastResult?.aiTag,
     }
 }

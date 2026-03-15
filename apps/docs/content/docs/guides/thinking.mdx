@@ -73,7 +73,7 @@ The SDK handles three distinct implementation patterns for reasoning, so your co
 If you're processing raw model output that contains `<think>` tags — for example, from an OpenRouter response — the SDK provides a `parseThinking` utility that handles three edge cases:
 
 ```typescript
-import { parseThinking } from 'tekimax-ts';
+import { parseThinking } from 'tekimax-omat';
 
 // Case 1: Complete think block
 const complete = parseThinking("<think>Calculating...</think> The answer is 42.");

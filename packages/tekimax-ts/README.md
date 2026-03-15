@@ -29,7 +29,7 @@
 
 ## 🌍 OMAT — Open Multimodal Assessment Toolkit
 
-**tekimax-omat** is the **Open Multimodal Assessment Toolkit (OMAT)** — an open-source framework enabling K-12 edtech developers to build, evaluate, and improve AI-powered formative assessments using multimodal student inputs: text, speech, drawing, and structured responses.
+**tekimax-omat** is the **Open Multimodal Assessment Toolkit (OMAT)** — an open-source framework for building, evaluating, and improving AI-powered formative assessments using multimodal inputs: text, speech, drawing, and structured responses. OMAT serves organizations across education (including K–12), workforce development, healthcare, and nonprofits.
 
 OMAT provides three interrelated public goods:
 
@@ -51,9 +51,9 @@ OMAT provides three interrelated public goods:
 - **Provider-agnostic evaluation** — Benchmark any AI system, regardless of provider
 - **Multimodal dataset access** — Load annotated student response data directly from the SDK
 
-> **Equity-Centered by Design** — OMAT centers multilingual learners, students with disabilities, and underserved communities at every level. Speech and drawing inputs ensure students who can't yet write can still demonstrate what they know.
+> **Equity-Centered by Design** — OMAT centers multilingual learners, individuals with disabilities, and communities that need it most at every level. Multimodal inputs like speech and drawing ensure that anyone who can't yet express ideas in writing can still demonstrate what they know.
 
-OMAT follows the vision set forward by [Digital Promise](https://digitalpromise.org) and the [K-12 AI Infrastructure Program](https://k12-ai-infrastructure.org/faq-march-8th-rfp/) — that AI in education deserves shared, open infrastructure built for the students who need it most.
+OMAT was inspired by the vision set forward by [Digital Promise](https://digitalpromise.org) and the [K-12 AI Infrastructure Program](https://k12-ai-infrastructure.org/faq-march-8th-rfp/). Their proposal demonstrated that AI in education deserves shared, open infrastructure — and OMAT extends that vision beyond K–12 to any sector where assessment quality and equity matter.
 
 ---
 

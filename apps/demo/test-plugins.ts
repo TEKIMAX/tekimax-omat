@@ -4,7 +4,7 @@ import {
     LoggerPlugin,
     PIIFilterPlugin,
     MaxContextOverflowPlugin
-} from 'tekimax-ts';
+} from 'tekimax-omat';
 
 async function testPlugins() {
     console.log("🚀 Starting Plugin Verification Test...\n");

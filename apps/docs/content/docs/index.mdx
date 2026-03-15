@@ -1,71 +1,93 @@
 ---
 title: Introduction
-description: The primitive layer for secure, multi-modal AI.
+description: Open-source AI infrastructure for organizations building software for good.
 ---
 
-import { Shield, Zap, Lock, Box, Code2, Globe, Cpu, Key } from 'lucide-react';
+import { Shield, Box, Code2, Heart } from 'lucide-react';
 import { Card, Cards } from 'fumadocs-ui/components/card';
+
+export const OpenAILogo = () => <img src="https://cdn.simpleicons.org/openai/white" width="20" height="20" alt="OpenAI" style={{display:'inline'}} />;
+export const AnthropicLogo = () => <img src="https://cdn.simpleicons.org/anthropic/white" width="20" height="20" alt="Anthropic" style={{display:'inline'}} />;
+export const GeminiLogo = () => <img src="https://cdn.simpleicons.org/googlegemini/white" width="20" height="20" alt="Google Gemini" style={{display:'inline'}} />;
+export const OllamaLogo = () => <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/ollama.svg" width="20" height="20" alt="Ollama" style={{display:'inline', filter:'invert(1)'}} />;
+export const XAILogo = () => <img src="https://cdn.simpleicons.org/x/white" width="20" height="20" alt="xAI" style={{display:'inline'}} />;
+export const OpenRouterLogo = () => <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/openrouter.svg" width="20" height="20" alt="OpenRouter" style={{display:'inline', filter:'invert(1)'}} />;
 
 <div className="flex items-center gap-4 not-prose mb-8">
   <img src="/tekimax-logo.png" width="64" height="64" alt="Tekimax Logo" className="dark:hidden block" />
   <img src="/tekimax-logo.png" width="64" height="64" alt="Tekimax Logo" className="hidden dark:block" />
   <div className="flex flex-col">
-    <span className="text-xl font-bold">The primitive layer for secure AI</span>
+    <span className="text-xl font-bold">Open AI infrastructure for the public good</span>
     <span className="text-muted-foreground">All providers. Zero CVEs. One interface.</span>
   </div>
 </div>
 
-**Tekimax** is a unified interface for secure, multi-modal AI. It provides a consistent, type-safe API across all major providers while guaranteeing a hardened software supply chain.
+**tekimax-omat** is an open-source, Apache-2.0 licensed AI SDK built for organizations doing work that matters — nonprofits, civic tech teams, educational institutions, workforce development programs, healthcare organizations, public-sector teams, and any group building AI tools that serve people rather than extract from them.
 
-## Why Tekimax?
+It provides a unified, type-safe interface across all major AI providers, a hardened supply chain, and a built-in assessment layer (OMAT) for measuring, auditing, and grounding AI-generated feedback in human-centered evaluation frameworks.
 
--   **Security First**: Built on **Chainguard** images with a verified build pipeline. Zero CVEs.
--   **Unified Interface**: Switch between OpenAI, Anthropic, Gemini, Grok, OpenRouter, and Ollama with a single line of code.
--   **Strict Modality Type-Safety**: Strong capability interfaces ensure your code only compiles when you invoke supported endpoints (e.g. `client.images.generate()` will error at compile-time on Ollama). Full IDE support with Zod schemas.
--   **No Vendor Lock-in**: Decouple your application logic from specific AI provider SDKs. If a provider raises prices or goes down, swap the adapter — your application code stays the same.
+## Why tekimax-omat?
+
+- **Open by default** — Apache-2.0 license. No vendor lock-in, no proprietary SDKs to depend on. Fork it, extend it, publish your own plugins.
+- **Provider-agnostic** — Switch between OpenAI, Anthropic, Gemini, Grok, OpenRouter, and Ollama with a single line change. Your application logic never changes.
+- **Assessment-ready (OMAT)** — Built-in rubric-grounded formative assessment pipeline with fairness auditing, demographic disparity detection, and benchmarking. Built for education (including K–12), workforce training, healthcare, nonprofit program evaluation, and any context where feedback quality and equity matter.
+- **Security-first** — Chainguard-based build artifacts, Cosign signing, Trivy scanning, strict TypeScript, Zod validation at every boundary.
+- **No vendor bloat** — Minimal dependency footprint. Core runtime requires only `zod` and `eventsource-parser`.
+
+## Who uses it?
+
+tekimax-omat is designed for any organization building AI tools that serve the public good:
+
+| Sector | What the SDK provides today |
+|--------|-----------------------------|
+| **Education & EdTech** | Full OMAT assessment pipeline — rubric-grounded formative feedback, ELL/IEP/FRL fairness auditing, learning progressions, `useAssessment` React hook |
+| **Nonprofits** | `FairnessReport` with demographic disparity flags, `AIActionTagPlugin` audit trails, `FAIRMetadata` with DOI support for grant-reportable outcomes |
+| **Civic tech** | `ApiSkillPlugin` to connect any government or community database as an AI-callable tool; `PIIFilterPlugin` to protect citizen data |
+| **Research institutions** | `BenchmarkRunner` with Cohen's Kappa accuracy, fairness, actionability, and alignment metrics; FAIR-tagged output with DOI field for archival |
+| **Workforce development** | `WorkforceAssessmentPipeline`, `WorkforceFairnessAuditPlugin`, `WorkforceDemographicTag` (employment status, program, credential target, barriers, O*NET codes), `createWorkforceRubric()` starter factory |
+| **Healthcare** | `HealthLiteracyPipeline`, `PatientResponse`, `ClinicalPIIFilterPlugin` (MRN, NPI, DEA, ICD-10, NDC, DOB, member ID redaction), pre-built `HEALTH_LITERACY_COMPREHENSION_RUBRIC` and `MEDICATION_INSTRUCTIONS_RUBRIC` |
 
 ## Supported Providers
 
 <Cards>
-  <Card icon={<Cpu />} href="/docs/adapters/openai" title="OpenAI" />
-  <Card icon={<Cpu />} href="/docs/adapters/anthropic" title="Anthropic" />
-  <Card icon={<Cpu />} href="/docs/adapters/gemini" title="Google Gemini" />
-  <Card icon={<Cpu />} href="/docs/adapters/ollama" title="Ollama" />
-  <Card icon={<Globe />} href="/docs/adapters/grok" title="xAI (Grok)" />
-  <Card icon={<Globe />} href="/docs/adapters/openrouter" title="OpenRouter" />
+  <Card icon={<OpenAILogo />} href="/docs/adapters/openai" title="OpenAI" description="GPT-4o, o1, DALL-E, Whisper, TTS" />
+  <Card icon={<AnthropicLogo />} href="/docs/adapters/anthropic" title="Anthropic" description="Claude 3.5 Sonnet, Claude 3 Opus" />
+  <Card icon={<GeminiLogo />} href="/docs/adapters/gemini" title="Google Gemini" description="Gemini 1.5 Pro/Flash, video analysis" />
+  <Card icon={<OllamaLogo />} href="/docs/adapters/ollama" title="Ollama" description="Local models, privacy-preserving" />
+  <Card icon={<XAILogo />} href="/docs/adapters/grok" title="xAI (Grok)" description="Grok-2, real-time reasoning" />
+  <Card icon={<OpenRouterLogo />} href="/docs/adapters/openrouter" title="OpenRouter" description="100+ models, single API key" />
 </Cards>
 
 ## Installation
 
 ```bash
-npm install tekimax-ts
+npm install tekimax-omat
 ```
 
 ## Quick Start
 
-Initialize the client with your preferred provider.
-
 ```typescript
-import { Tekimax, OpenAIProvider } from 'tekimax-ts';
+import { Tekimax, OpenAIProvider } from 'tekimax-omat';
 
-// 1. Configure the Provider
 const provider = new OpenAIProvider({
-  // Always pass keys via environment variables — never hardcode secrets,
-  // so credentials stay out of source control and can rotate without redeploying.
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-// 2. Initialize the Client
-// The Tekimax wrapper decouples your app from any single provider.
-// Swap OpenAIProvider → AnthropicProvider and nothing else changes.
 const client = new Tekimax({ provider });
 
-// 3. Chat (Text Modality)
 const response = await client.text.chat.completions.create({
   model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'Hello World!' }],
+  messages: [{ role: 'user', content: 'Hello!' }],
 });
 
-// The SDK returns a flat ChatResult — no choices array to index into.
 console.log(response.message.content);
 ```
+
+## What's in the box?
+
+<Cards>
+  <Card icon={<Code2 />} href="/docs/core" title="Core SDK" description="Chat, streaming, tools, embeddings, multi-modal" />
+  <Card icon={<Box />} href="/docs/plugins" title="Plugins" description="PII redaction, context management, fairness auditing, action tagging" />
+  <Card icon={<Heart />} href="/docs/guides/assessment" title="OMAT Assessment" description="Rubric-grounded feedback, fairness auditing, benchmarking" />
+  <Card icon={<Shield />} href="/docs/security" title="Security" description="Supply chain hardening, runtime protection, Zod validation" />
+</Cards>

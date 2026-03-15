@@ -1,6 +1,41 @@
 import { TekimaxPlugin, PluginContext } from '../core/types';
 
 // ─────────────────────────────────────────────────────────────
+// SSRF guard — block private, loopback, and metadata ranges
+// ─────────────────────────────────────────────────────────────
+
+const PRIVATE_HOSTNAME = /^(localhost|.*\.local)$/i;
+
+function isPrivateOrReservedUrl(urlString: string): boolean {
+    let host: string;
+    try {
+        host = new URL(urlString).hostname;
+    } catch {
+        return true; // Malformed URL — block it
+    }
+
+    // Hostname checks
+    if (PRIVATE_HOSTNAME.test(host)) return true;
+
+    // IPv4 checks
+    const parts = host.split('.').map(Number);
+    if (parts.length === 4 && parts.every(p => !isNaN(p))) {
+        const [a, b] = parts as [number, number, number, number];
+        if (a === 127) return true;                           // 127.0.0.0/8 loopback
+        if (a === 10) return true;                            // 10.0.0.0/8 private
+        if (a === 172 && b >= 16 && b <= 31) return true;    // 172.16.0.0/12 private
+        if (a === 192 && b === 168) return true;              // 192.168.0.0/16 private
+        if (a === 169 && b === 254) return true;              // 169.254.0.0/16 link-local (AWS metadata)
+        if (a === 0) return true;                             // 0.0.0.0/8 reserved
+    }
+
+    // IPv6 loopback
+    if (host === '::1' || host === '[::1]') return true;
+
+    return false;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 
@@ -54,17 +89,20 @@ class RateLimiter {
     ) { }
 
     async acquire(): Promise<void> {
-        const now = Date.now();
-        this.timestamps = this.timestamps.filter(t => now - t < this.windowMs);
+        // Iterative — no recursion risk under backpressure
+        while (true) {
+            const now = Date.now();
+            this.timestamps = this.timestamps.filter(t => now - t < this.windowMs);
 
-        if (this.timestamps.length >= this.maxRequests) {
+            if (this.timestamps.length < this.maxRequests) {
+                this.timestamps.push(now);
+                return;
+            }
+
             const oldest = this.timestamps[0]!;
             const waitMs = this.windowMs - (now - oldest) + 10;
-            await new Promise(r => setTimeout(r, waitMs));
-            return this.acquire();
+            await new Promise<void>(r => setTimeout(r, waitMs));
         }
-
-        this.timestamps.push(now);
     }
 }
 
@@ -178,7 +216,7 @@ export class ApiNamespace {
  *
  * @example
  * ```ts
- * import { ProvisionPlugin } from 'tekimax-ts';
+ * import { ProvisionPlugin } from 'tekimax-omat';
  *
  * const provision = new ProvisionPlugin({
  *   apiUrl: 'https://api.example.com',
@@ -269,7 +307,28 @@ export class ProvisionPlugin implements TekimaxPlugin {
     ): Promise<ApiResponse<T>> {
         await this.rateLimiter.acquire();
 
-        const url = path.startsWith('http') ? path : `${this.config.apiUrl}${path}`;
+        // Build full URL first, then SSRF-check the resolved address
+        let url: string;
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            const requestedHost = new URL(path).host;
+            const baseHost = new URL(this.config.apiUrl).host;
+            if (requestedHost !== baseHost) {
+                throw new Error(
+                    `ProvisionPlugin: absolute URL host "${requestedHost}" does not match configured apiUrl host "${baseHost}"`
+                );
+            }
+            url = path;
+        } else {
+            url = `${this.config.apiUrl}${path}`;
+        }
+
+        // Block private/loopback/metadata addresses regardless of how the URL was built
+        if (isPrivateOrReservedUrl(url)) {
+            throw new Error(
+                `ProvisionPlugin: request to "${new URL(url).hostname}" is blocked — ` +
+                'private, loopback, and metadata service addresses are not allowed'
+            );
+        }
         const start = Date.now();
 
         // Build headers

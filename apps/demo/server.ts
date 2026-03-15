@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { Tekimax, OpenAIProvider } from 'tekimax-ts';
+import { Tekimax, OpenAIProvider } from 'tekimax-omat';
 
 dotenv.config();
 

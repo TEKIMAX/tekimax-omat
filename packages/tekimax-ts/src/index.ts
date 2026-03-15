@@ -21,8 +21,24 @@ export * from './core/middleware'
 export * from './core/fallback'
 export * from './core/cache'
 export * from './tekimax'
+export * from './core/model-context'
+export * from './core/conversation'
 export { LoggerPlugin } from './plugins/logger';
+export { ClinicalPIIFilterPlugin } from './plugins/clinical-pii';
 export { PIIFilterPlugin } from './plugins/pii';
-export { MaxContextOverflowPlugin } from './plugins/context';
+export { TokenAwareContextPlugin, MaxContextOverflowPlugin } from './plugins/context';
+export type { TokenAwareContextConfig, StripeMeteringConfig } from './plugins/context';
+export { AIActionTagPlugin } from './plugins/action-tag';
+export type { AIActionTagConfig } from './plugins/action-tag';
 export { ProvisionPlugin, ApiNamespace } from './plugins/provision';
 export type { ProvisionConfig, ApiEndpoint, ApiResponse } from './plugins/provision';
+export { FairnessAuditPlugin } from './plugins/fairness-audit';
+export type { FairnessAuditConfig } from './plugins/fairness-audit';
+export { RubricValidatorPlugin } from './plugins/rubric-validator';
+export type { RubricValidatorConfig, ValidationResult, ValidationIssue } from './plugins/rubric-validator';
+export { LearningProgressionPlugin } from './plugins/learning-progression';
+export type { LearningProgressionConfig } from './plugins/learning-progression';
+export { ApiSkillPlugin } from './plugins/api-skill';
+export type { ApiSkillPluginConfig, ApiSkillAuth, SkillEndpoint, OpenApiSkillConfig, SkillResult } from './plugins/api-skill';
+export * from './assessment';
+export * from './benchmarks';

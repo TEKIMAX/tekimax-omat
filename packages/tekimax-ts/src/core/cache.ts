@@ -70,7 +70,7 @@ export interface TokenBudgetResult {
  *
  * @example
  * ```ts
- * import { ResponseCache } from 'tekimax-ts'
+ * import { ResponseCache } from 'tekimax-omat'
  * import Redis from 'ioredis'
  *
  * const cache = new ResponseCache(new Redis(), { ttl: 3600 })
@@ -99,7 +99,14 @@ export class ResponseCache {
     async get(model: string, messages: any[]): Promise<any | null> {
         const key = this.prefix + this.keyFn(model, messages)
         const data = await this.redis.get(key)
-        return data ? JSON.parse(data) : null
+        if (!data) return null
+        try {
+            return JSON.parse(data)
+        } catch {
+            console.warn(`[ResponseCache] Corrupted cache entry for key ${key} — evicting`)
+            await this.redis.del(key)
+            return null
+        }
     }
 
     async set(model: string, messages: any[], response: any): Promise<void> {
@@ -291,7 +298,13 @@ export class SessionStore {
     async load(sessionId: string): Promise<any | null> {
         const key = this.prefix + sessionId
         const data = await this.redis.get(key)
-        return data ? JSON.parse(data) : null
+        if (!data) return null
+        try {
+            return JSON.parse(data)
+        } catch {
+            console.warn(`[SessionStore] Corrupted session data for ${sessionId} — returning null`)
+            return null
+        }
     }
 
     async destroy(sessionId: string): Promise<void> {

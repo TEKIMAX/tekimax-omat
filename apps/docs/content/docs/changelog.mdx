@@ -1,72 +1,151 @@
 ---
 title: Changelog
-description: Latest updates and changes to the Tekimax SDK.
+description: Version history for tekimax-omat.
 ---
 
 # Changelog
 
-## v0.2.0 (Latest)
+## v0.4.1 (Latest)
 
-### Enterprise Plugin Architecture
-- **Middleware Hooks**: Introduced the `TekimaxPlugin` interface exposing lifecycle hooks (`beforeRequest`, `afterResponse`, `onStreamChunk`, `beforeToolExecute`, `afterToolExecute`).
-- **Security (`PIIFilterPlugin`)**: Built-in plugin to redact sensitive regex patterns (emails, SSNs) before they leave the client.
-- **Scalability (`MaxContextOverflowPlugin`)**: Built-in plugin to safely truncate context windows on long-running loops while safely preserving system prompts.
-- **Telemetry (`LoggerPlugin`)**: Standardized console logging for requests, tool executions, and tokens.
+### OMAT — Open Multimodal Assessment Toolkit
 
-### Core Capabilities
-- **Real-Time Streaming**: Native support for Server-Sent Events (SSE) via Javascript Async Iterables (`client.text.generateStream()`).
-- **Embeddings API**: Unified interface for text embeddings (`client.text.embed()`).
-- **React Hooks**: Exported `useChat` hook from `tekimax-ts/react` supporting chunked streaming directly in the frontend.
+The full OMAT assessment layer is now built into `tekimax-omat`. Designed for any organization measuring learning outcomes, skill development, or program effectiveness with AI-generated formative feedback.
 
-### Provider Catalog Fusion
-- **Models.dev Introspection**: The SDK now optionally fuses metadata from the `models.dev` catalog into standard `ModelDefinition` objects.
-- **Strict Capabilities**: `getModels()` exposes an authoritative map of model limits, costs, supported modalities, and reasoning (`think`) capabilities.
+**New: `AssessmentPipeline`**
+- Accepts student/participant responses in any modality: `text`, `speech`, `drawing`, `handwriting`
+- Automatically transcribes speech (`TranscriptionCapability`) and describes images (`VisionCapability`) before scoring
+- Generates structured `FormativeFeedback` via JSON mode: overall summary, per-criterion scores with evidence, strengths, next steps, encouragement, and normalized score
+- Configurable feedback language (BCP-47), temperature, and plugin hooks
+- `assess()`, `assessBatch()`, and `assessStream()` methods
 
-## v0.1.9 (Latest)
+**New: `FairnessAuditPlugin`**
+- Collects demographic performance data across assessments
+- Produces `FairnessReport` with `DemographicGroup[]` and `DisparityFlag[]`
+- Configurable warning (default: 10%) and critical (default: 20%) disparity thresholds
+- Minimum group size protection (default: 5) to prevent small-n privacy exposure
+- FAIR metadata attached to reports for open data publication
+
+**New: `RubricValidatorPlugin`**
+- Validates AI feedback against your rubric: criterion coverage, score ranges, level label consistency, evidence presence, suggestion presence, normalized score bounds
+- Strict mode: throws on validation errors (for test/benchmark pipelines)
+- Non-strict mode: logs warnings and errors, never blocks delivery
+
+**New: `LearningProgressionPlugin`**
+- Maps criterion scores to positions on developmental learning progressions
+- Annotates feedback with current stage, next milestone, and observable indicators
+- Works for any domain: writing, coding, clinical skills, workforce readiness, etc.
+
+**New: `BenchmarkRunner`**
+- Runs standardized evaluations across a `BenchmarkSuite`
+- Four metrics: accuracy (Cohen's kappa vs human scores), fairness (max demographic gap), actionability (% with concrete suggestions), alignment (criterion coverage + evidence grounding)
+- Results include FAIR metadata for DOI assignment and archival
+
+**New: `useAssessment` React hook**
+- Wraps `AssessmentPipeline` with React state management
+- Supports streaming and non-streaming modes
+- Abort handling, history tracking, reset
+
+---
+
+## v0.4.0
+
+### AI Action Tagging
+
+**New: `AIActionTagPlugin`**
+- Attaches `aiTag` to every `ChatResult` and `GenerateTextResult`
+- Infers CRUD operation from tool call names (high confidence) or response text keywords (low confidence)
+- `onTag` callback for audit logging
+- `aiTag` available on all results even without the plugin
+
+**New: `aiTag` on `ChatResult` and `GenerateTextResult`**
+```typescript
+interface AIActionTag {
+  source: 'ai';
+  operation: 'create' | 'read' | 'update' | 'delete' | 'none';
+  confidence: 'high' | 'low' | 'none';
+  model: string;
+  timestamp: number;
+  toolName?: string;
+}
+```
+
+---
+
+## v0.3.0
+
+### Dynamic Context Window Management
+
+**New: `TokenAwareContextPlugin`** (replaces `MaxContextOverflowPlugin`)
+- Token-aware trimming using chars/4 heuristic
+- Built-in registry of 50+ models: GPT-4o (128K), Claude (200K), Gemini 1.5 Pro (1M), etc.
+- Live OpenRouter API fallback for unlisted models with in-process caching
+- Three truncation strategies: `auto`, `last_messages`, `disabled`
+- Optional Stripe Billing Meter integration (off by default) — meter token usage per customer
+
+**New: `model-context.ts` registry**
+- `getModelContextInfo(modelId)` — instant lookup with prefix matching
+- `fetchModelContextWindow(modelId, apiKey?)` — live fetch with cache
+- `registerModelContext()` — register private or fine-tuned models
+
+**New: `Conversation` class**
+- Stateful multi-turn chat: auto-appends messages, full history, plugin support
+- `send()`, `stream()`, `inject()`, `clear()`, `restore()`, `export()`
+
+---
+
+## v0.2.0
+
+### Plugin Architecture
+
+- **`TekimaxPlugin` interface** — lifecycle hooks: `beforeRequest`, `afterResponse`, `onStreamChunk`, `beforeToolExecute`, `afterToolExecute`
+- **`PIIFilterPlugin`** — redacts emails, SSNs, phone numbers, credit card numbers from both string and multi-part `ContentPart[]` messages
+- **`LoggerPlugin`** — request/response telemetry with token reporting
+- **`ProvisionPlugin`** — API gateway proxy with rate limiting and SSRF protection
+
+### Core Features
+
+- Real-time streaming via `AsyncIterable<StreamChunk>`
+- Embeddings API (`client.text.embed()`)
+- `useChat` React hook with tool loops, streaming, abort support
+
+---
+
+## v0.1.9
 
 ### Multi-Modal Parity
-- **OpenAIProvider**: Added `generateImage`, `analyzeImage`, `generateSpeech`, and `transcribeAudio`.
-- **GeminiProvider**: Added `analyzeImage` and `analyzeVideo` (Video-to-Text).
-- **AnthropicProvider**: Added `analyzeImage` (Vision via Claude 3.5 Sonnet).
-- **Core**: Validated unified multi-modal interfaces across all modalities.
+
+- **OpenAIProvider**: `generateImage`, `analyzeImage`, `generateSpeech`, `transcribeAudio`
+- **GeminiProvider**: `analyzeImage`, `analyzeVideo`
+- **AnthropicProvider**: `analyzeImage` (Claude 3.x vision)
+- **OpenRouterProvider**: `analyzeImage` (passes through to vision-capable models)
+
+---
 
 ## v0.1.8
 
-### Tooling & Parity
-- **GeminiProvider**: Added full support for function calling (`tools` and `tool_choice`). Gemini uses `functionDeclarations` internally, but the SDK normalizes this to the standard `tools` array format.
-- **AnthropicProvider**: Implemented response parsing for `tool_use` blocks, mapping Anthropic's content-block format to the unified `toolCalls` array.
-- **Parity**: Achieved tool calling parity across OpenAI, Ollama, Gemini, and Anthropic.
+### Tool Calling Parity
 
-### Browser Compatibility
-- **OllamaProvider**: Switched import from `ollama` to `ollama/browser` to avoid `node:fs` externalization errors in Vite/Next.js client-side builds. The `/browser` sub-export strips Node-only file-system code.
-- **Utilities**: Added browser-safe `fileToBase64` helper using `FileReader` instead of `Buffer`.
+- **GeminiProvider**: Full tool/function calling (`functionDeclarations` normalized to `tools` array)
+- **AnthropicProvider**: `tool_use` content blocks normalized to `toolCalls[]`
+- Parity across OpenAI, Ollama, Gemini, Anthropic
 
-### Core Enhancements
-- **Reasoning**: Added `parseThinking` utility to handle `<think>` blocks from models like DeepSeek-R1. Handles three cases: no think tag, streaming (tag opened but not closed), and complete blocks.
-- **Exports**: Exposed `ToolDefinition` and `ToolCall` types from root.
+### Reasoning
+
+- `parseThinking` utility for `<think>` blocks (DeepSeek R1 and compatible models)
+- `think: true` flag in `ChatOptions`
+
+---
 
 ## v0.1.1
 
-### Adapter Standardization
-- **TekimaxProvider**: Added support for **Stateless Mode** (full history mapping).
-- **OllamaProvider**: Added support for **Cloud Authentication** (`apiKey` option). Uses a custom `fetch` wrapper to inject `Authorization: Bearer` headers, because the Ollama JS SDK doesn't natively support auth tokens.
-- **Verified**: Consistency checks passed for Anthropic, Gemini, OpenAI, and internal adapters.
+- **TekimaxProvider**: Stateless mode with full history mapping
+- **OllamaProvider**: Cloud auth (`apiKey`) via custom `fetch` wrapper; browser-safe via `ollama/browser`
 
-### Documentation
-- Updated core documentation to reflect stateless capabilities.
-- Added usage examples for authenticated Ollama connections.
-- Removed stale "Supported Models" lists in favor of linking to official provider documentation.
+---
 
-### Dependencies Updated
-- **openai**: `4.0.0` → `^6.17.0` (major upgrade — v6 changed response types and requires `max_completion_tokens` instead of `max_tokens`).
-- **@anthropic-ai/sdk**: `0.33.1` → `^0.72.1`.
-- **@google/generative-ai**: `0.21.0` → `^0.24.1`.
-- **ollama**: `0.5.11` → `^0.6.3`.
+## v0.1.0 — Initial Release
 
-## v0.1.0 (Initial Release)
-
-### Features
-- **Monorepo Structure**: Migrated to Turborepo for unified builds across SDK, docs, and UI packages.
-- **Unified Client**: `Tekimax` client with `AIProvider` interface.
-- **Adapters**: Initial support for Anthropic, Gemini, Grok, Ollama, OpenAI, and OpenRouter.
-- **Docs**: Launched documentation site on Cloudflare Pages.
+- Monorepo structure (Turborepo)
+- `Tekimax` unified client with `AIProvider` interface
+- Adapters: Anthropic, Gemini, Grok, Ollama, OpenAI, OpenRouter
+- Docs site on Cloudflare Pages

@@ -15,7 +15,7 @@ Tekimax takes a **pragmatic approach** to error handling: it adds its own checks
 If you try to use a feature that your configured provider does not support, Tekimax will throw a descriptive `Error`.
 
 ```typescript
-import { Tekimax, GrokProvider } from 'tekimax-ts';
+import { Tekimax, GrokProvider } from 'tekimax-omat';
 
 const client = new Tekimax({ provider: new GrokProvider({ apiKey: process.env.XAI_API_KEY! }) });
 
@@ -54,7 +54,7 @@ try {
 If you need deeper introspection (e.g., checking for rate limits or extracting HTTP status codes), you can catch the provider SDK's error type directly.
 
 ```typescript
-import { OpenAIProvider } from 'tekimax-ts';
+import { OpenAIProvider } from 'tekimax-omat';
 // Import the error class from the provider's own package.
 // This is a peer dependency — you already have it installed.
 import { APIError } from 'openai';

@@ -1,5 +1,17 @@
 export { LoggerPlugin } from './logger';
+export { ClinicalPIIFilterPlugin } from './clinical-pii';
 export { PIIFilterPlugin } from './pii';
-export { MaxContextOverflowPlugin } from './context';
+export { TokenAwareContextPlugin, MaxContextOverflowPlugin } from './context';
+export type { TokenAwareContextConfig, StripeMeteringConfig } from './context';
+export { AIActionTagPlugin } from './action-tag';
+export type { AIActionTagConfig } from './action-tag';
 export { ProvisionPlugin, ApiNamespace } from './provision';
 export type { ProvisionConfig, ApiEndpoint, ApiResponse } from './provision';
+export { FairnessAuditPlugin } from './fairness-audit';
+export type { FairnessAuditConfig } from './fairness-audit';
+export { RubricValidatorPlugin } from './rubric-validator';
+export type { RubricValidatorConfig, ValidationResult, ValidationIssue } from './rubric-validator';
+export { LearningProgressionPlugin } from './learning-progression';
+export type { LearningProgressionConfig } from './learning-progression';
+export { ApiSkillPlugin } from './api-skill';
+export type { ApiSkillPluginConfig, ApiSkillAuth, SkillEndpoint, OpenApiSkillConfig, SkillResult } from './api-skill';

@@ -22,6 +22,36 @@ export interface Tool<T = any> extends ToolDefinition {
     execute: (args: T) => Promise<unknown>
 }
 
+// ─── AI Action Tagging (provenance + CRUD tracking) ──────────────────────────
+
+/** CRUD operation the AI performed in this response. */
+export type AIOperation = 'create' | 'read' | 'update' | 'delete' | 'none'
+
+/**
+ * Provenance tag attached to every AI response.
+ * Lets the application distinguish AI-assisted content from human content
+ * and understand what CRUD action the AI took.
+ */
+export interface AIActionTag {
+    /** Always `'ai'` — indicates this content was AI-generated. */
+    source: 'ai'
+    /** CRUD operation inferred from the response. */
+    operation: AIOperation
+    /**
+     * Confidence of the inferred operation.
+     * - `'high'` — inferred from a tool call name (reliable).
+     * - `'low'`  — inferred from response text keywords (heuristic).
+     * - `'none'` — no operation could be inferred (`operation` will be `'none'`).
+     */
+    confidence: 'high' | 'low' | 'none'
+    /** Model that produced this response. */
+    model: string
+    /** Unix timestamp (ms) of when the response was received. */
+    timestamp: number
+    /** Tool name that triggered the inferred operation, if any. */
+    toolName?: string
+}
+
 export interface GenerateTextResult {
     text: string
     toolCalls: Array<ToolCall>
@@ -31,8 +61,12 @@ export interface GenerateTextResult {
         promptTokens: number
         completionTokens: number
         totalTokens: number
+        contextWindowTokensUsed?: number
+        contextWindowTokensRemaining?: number
     }
     warnings?: Array<string>
+    /** AI provenance + CRUD action tag. Populated by `AIActionTagPlugin`. */
+    aiTag?: AIActionTag
 }
 
 export interface TextContentPart {
@@ -158,12 +192,30 @@ export interface ChatOptions {
     messages: Array<Message>
     tools?: Array<ToolDefinition>
     temperature?: number
+    /** Maximum output tokens. Alias: max_output_tokens (OpenResponses spec). */
     maxTokens?: number
     stream?: boolean
     think?: boolean // Enable thinking parameter
     signal?: AbortSignal
     /** Force a specific response format. 'json_object' enables JSON mode. */
     responseFormat?: { type: 'json_object' | 'text' }
+
+    // --- OpenResponses spec additions ---
+
+    /**
+     * Override the effective context window size in tokens.
+     * When set, the context plugin uses this value instead of the model's
+     * registry/live value. Useful for fine-tuned models or custom deployments.
+     */
+    contextWindow?: number
+
+    /**
+     * How to handle context overflow.
+     * - `'auto'`          — Drop oldest messages automatically (default).
+     * - `'last_messages'` — Keep only the newest messages that fit.
+     * - `'disabled'`      — Pass through without truncation (warns if over limit).
+     */
+    truncationStrategy?: 'auto' | 'last_messages' | 'disabled'
 }
 
 export interface ChatResult {
@@ -172,7 +224,11 @@ export interface ChatResult {
         promptTokens: number
         completionTokens: number
         totalTokens: number
+        contextWindowTokensUsed?: number
+        contextWindowTokensRemaining?: number
     }
+    /** AI provenance + CRUD action tag. Populated by `AIActionTagPlugin`. */
+    aiTag?: AIActionTag
 }
 
 export interface StreamChunk {

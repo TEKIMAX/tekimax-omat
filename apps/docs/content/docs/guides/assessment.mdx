@@ -1,0 +1,631 @@
+---
+title: OMAT — Assessment & Feedback
+description: Rubric-grounded formative feedback, fairness auditing, and benchmarking for any evaluation program.
+---
+
+# OMAT — Open Multimodal Assessment Toolkit
+
+OMAT is the assessment layer built into `tekimax-omat`. It provides:
+
+- **`AssessmentPipeline`** — accepts text, speech, drawings, or handwriting; generates structured rubric-grounded feedback
+- **`FairnessAuditPlugin`** — tracks demographic performance gaps and produces equity reports
+- **`RubricValidatorPlugin`** — validates AI feedback for correctness, evidence, and actionability
+- **`LearningProgressionPlugin`** — maps scores to developmental stages and next milestones
+- **`BenchmarkRunner`** — standardized evaluation with four metrics and FAIR metadata
+- **`useAssessment`** — React hook for real-time feedback in your UI
+
+## Who is this for?
+
+OMAT was designed for formative assessment in K–12 programs, but the primitives apply wherever you need:
+
+- **AI-generated feedback** grounded in a rubric or competency framework
+- **Equity reporting** that surfaces score gaps across demographic groups
+- **Multimodal input** — text essays, spoken responses, hand-drawn diagrams, scanned handwriting
+- **Reproducible benchmarking** for grant reporting, publication, or internal QA
+
+Examples:
+- K–12 writing assessment programs
+- Workforce development skill credentialing
+- Nonprofit program outcome measurement
+- Clinical education competency assessment
+- Coding bootcamp project reviews
+- Language learning progress tracking
+
+---
+
+## Step 1 — Define a Rubric
+
+A `Rubric` defines the evaluation criteria, scoring levels, and optional learning progressions.
+
+```typescript
+import type { Rubric } from 'tekimax-omat';
+
+const writingRubric: Rubric = {
+  id: 'narrative-writing-v1',
+  name: 'Narrative Writing — Grade 4',
+  description: 'Evaluates student narrative writing across four dimensions.',
+  subject: 'ela',
+  gradeRange: ['3', '4', '5'],
+  criteria: [
+    {
+      id: 'argument-structure',
+      name: 'Argument Structure',
+      description: 'Does the piece have a clear beginning, middle, and end with a central claim?',
+      weight: 2,
+      levels: [
+        { score: 1, label: 'Emerging',    descriptor: 'No discernible structure; ideas are scattered.' },
+        { score: 2, label: 'Developing',  descriptor: 'Some structure present; beginning or ending missing.' },
+        { score: 3, label: 'Proficient',  descriptor: 'Clear structure; central claim present.' },
+        { score: 4, label: 'Advanced',    descriptor: 'Sophisticated structure; claim developed with nuance.' },
+      ],
+    },
+    {
+      id: 'evidence',
+      name: 'Use of Evidence',
+      description: 'Does the student cite specific details or evidence to support their claim?',
+      weight: 2,
+      levels: [
+        { score: 1, label: 'Emerging',   descriptor: 'No evidence or details provided.' },
+        { score: 2, label: 'Developing', descriptor: 'Vague reference to evidence; not specific.' },
+        { score: 3, label: 'Proficient', descriptor: 'At least one specific detail cited.' },
+        { score: 4, label: 'Advanced',   descriptor: 'Multiple specific details; well-integrated.' },
+      ],
+    },
+    {
+      id: 'voice',
+      name: 'Voice & Engagement',
+      description: 'Is the writing engaging and does the student\'s voice come through?',
+      weight: 1,
+      levels: [
+        { score: 1, label: 'Emerging',   descriptor: 'Flat, disengaged tone.' },
+        { score: 2, label: 'Developing', descriptor: 'Some personality evident.' },
+        { score: 3, label: 'Proficient', descriptor: 'Consistent, engaging voice.' },
+        { score: 4, label: 'Advanced',   descriptor: 'Distinctive, compelling voice throughout.' },
+      ],
+    },
+  ],
+};
+```
+
+---
+
+## Step 2 — Set Up the Pipeline
+
+```typescript
+import { AssessmentPipeline, OpenAIProvider } from 'tekimax-omat';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
+
+const pipeline = new AssessmentPipeline({
+  provider,
+  rubric: writingRubric,
+  model: 'gpt-4o',
+  feedbackLanguage: 'en',  // BCP-47 — 'es', 'zh', etc. for multilingual feedback
+  temperature: 0.3,        // Lower = more consistent rubric-aligned scoring
+});
+```
+
+---
+
+## Step 3 — Assess a Response
+
+### Text response
+
+```typescript
+import type { StudentResponse } from 'tekimax-omat';
+
+const response: StudentResponse = {
+  id: 'response-001',
+  modality: 'text',
+  text: `My favorite place is the community garden on 5th Street. Every Saturday I help
+  my abuela plant tomatoes and peppers. I think community gardens are important because
+  they bring neighbors together and give people fresh food. Last summer we grew so much
+  that we shared with the whole block.`,
+  // Optional: demographic context for fairness tracking (never sent to the model)
+  demographics: {
+    gradeLevel: '4',
+    ellStatus: 'intermediate',
+    subgroup: ['FRL'],
+  }
+};
+
+const feedback = await pipeline.assess(response);
+
+console.log(feedback.overall);
+// "Your writing shows a clear understanding of why the community garden matters to you
+//  and your community. You lead with a specific place and use personal experience to
+//  support your central idea — that's exactly what strong narrative writing does."
+
+console.log(feedback.normalizedScore); // 0.78
+
+feedback.scores.forEach(s => {
+  console.log(`${s.criterionName}: ${s.score} (${s.levelLabel})`);
+  console.log('Evidence:', s.evidence);
+  console.log('Suggestions:', s.suggestions);
+});
+
+console.log(feedback.strengths);
+// ["Specific, vivid detail (community garden on 5th Street)", "Connects personal experience to broader claim"]
+
+console.log(feedback.nextSteps);
+// ["Add one more specific detail about what you observed or felt", "Try a stronger closing sentence"]
+
+console.log(feedback.encouragement);
+// "Your voice is so clear in this piece — keep writing from the heart!"
+```
+
+### Speech response (auto-transcribed)
+
+```typescript
+import fs from 'node:fs';
+
+const speechResponse: StudentResponse = {
+  id: 'response-002',
+  modality: 'speech',
+  audio: fs.readFileSync('student-recording.mp3'), // Buffer or base64 string
+  language: 'en',
+};
+
+// The pipeline transcribes audio with Whisper, then scores the transcript
+const feedback = await pipeline.assess(speechResponse);
+```
+
+### Drawing / handwriting (auto-described)
+
+```typescript
+const drawingResponse: StudentResponse = {
+  id: 'response-003',
+  modality: 'drawing',  // or 'handwriting'
+  image: 'data:image/png;base64,...', // base64 data URL or https:// URL
+};
+
+// The pipeline describes the image with a vision model, then scores the description
+const feedback = await pipeline.assess(drawingResponse);
+```
+
+> **Provider requirements:**
+> - Speech transcription requires `OpenAIProvider` (Whisper)
+> - Drawing/handwriting analysis requires `OpenAIProvider`, `AnthropicProvider`, or `GeminiProvider`
+
+---
+
+## Batch Assessment
+
+```typescript
+const feedbacks = await pipeline.assessBatch(responses);
+// Runs sequentially to avoid rate limits
+```
+
+---
+
+## Step 4 — Fairness Auditing
+
+Track demographic performance gaps across your assessments.
+
+```typescript
+import { FairnessAuditPlugin } from 'tekimax-omat';
+
+const fairnessPlugin = new FairnessAuditPlugin({
+  warningThreshold: 0.10,  // 10% gap triggers a warning
+  criticalThreshold: 0.20, // 20% gap triggers a critical flag
+  minGroupSize: 5,          // Groups smaller than this are not reported (privacy)
+});
+
+const pipeline = new AssessmentPipeline({
+  provider,
+  rubric: writingRubric,
+  model: 'gpt-4o',
+  plugins: [fairnessPlugin],
+});
+
+// Assess all responses (demographics are attached to each StudentResponse)
+await pipeline.assessBatch(responses);
+
+// Or record manually after assessing
+fairnessPlugin.record(feedback, ['ELL:beginner', 'FRL', 'grade:4']);
+
+const report = fairnessPlugin.getReport();
+
+console.log(report.totalResponses);         // 142
+console.log(report.overallAverageScore);    // 0.71
+
+report.groups.forEach(g => {
+  console.log(`${g.tag}: avg=${g.averageScore.toFixed(2)}, n=${g.n}`);
+});
+
+report.disparityFlags.forEach(f => {
+  console.log(`[${f.severity.toUpperCase()}] ${f.description}`);
+});
+// [CRITICAL] Group "ELL:beginner" scores 23.0% below overall on score.
+// [WARNING]  Group "FRL" scores 11.2% below overall on actionability.
+```
+
+The report includes `fair` metadata (Apache-2.0 license, keywords, creators) for FAIR data publication.
+
+---
+
+## Step 5 — Rubric Validation
+
+Catch AI feedback that misses criteria or violates rubric constraints:
+
+```typescript
+import { RubricValidatorPlugin } from 'tekimax-omat';
+
+const validator = new RubricValidatorPlugin({
+  rubric: writingRubric,
+  strict: false, // true = throw Error on validation failure
+});
+
+// Via pipeline (validates automatically on each assess())
+const pipeline = new AssessmentPipeline({
+  provider, rubric: writingRubric, model: 'gpt-4o',
+  plugins: [validator],
+});
+
+await pipeline.assess(response);
+console.log(validator.lastValidation?.valid);  // true / false
+console.log(validator.lastValidation?.issues); // [{ field, severity, message }]
+
+// Directly (useful in tests)
+const result = validator.validate(feedback);
+if (!result.valid) {
+  result.issues
+    .filter(i => i.severity === 'error')
+    .forEach(i => console.error(`${i.field}: ${i.message}`));
+}
+```
+
+---
+
+## Step 6 — Learning Progressions
+
+Map scores to developmental stages and generate next-milestone suggestions:
+
+```typescript
+import { LearningProgressionPlugin } from 'tekimax-omat';
+
+const progressionPlugin = new LearningProgressionPlugin({
+  progressions: {
+    'argument-structure': [
+      { sequence: 1, description: 'States a position', typicalGrade: '2', indicators: ['Uses "I think"'] },
+      { sequence: 2, description: 'One supporting reason', typicalGrade: '3', indicators: ['Single reason'] },
+      { sequence: 3, description: 'Multiple reasons with evidence', typicalGrade: '4', indicators: ['2+ reasons', 'Cites text'] },
+      { sequence: 4, description: 'Counterargument acknowledged', typicalGrade: '5', indicators: ['Names opposing view'] },
+    ],
+    'evidence': [
+      { sequence: 1, description: 'No evidence', typicalGrade: '2', indicators: ['General claims only'] },
+      { sequence: 2, description: 'Vague reference', typicalGrade: '3', indicators: ['Mentions topic'] },
+      { sequence: 3, description: 'Specific detail cited', typicalGrade: '4', indicators: ['Names specific detail'] },
+      { sequence: 4, description: 'Multiple integrated details', typicalGrade: '5', indicators: ['Weaves evidence'] },
+    ],
+  }
+});
+
+// Annotates feedback.scores[*].progressionStep and .nextMilestone in-place
+progressionPlugin.annotate(feedback);
+
+feedback.scores.forEach(s => {
+  console.log(`${s.criterionName}: Stage ${s.progressionStep}, next → ${s.nextMilestone}`);
+});
+```
+
+---
+
+## Benchmarking
+
+Run standardized evaluations across a suite of known items (with human expert scores) to measure model accuracy, fairness, actionability, and rubric alignment:
+
+```typescript
+import { BenchmarkRunner, AssessmentPipeline } from 'tekimax-omat';
+import type { BenchmarkSuite } from 'tekimax-omat';
+
+const suite: BenchmarkSuite = {
+  id: 'writing-benchmark-2026',
+  name: 'Grade 4 Writing Benchmark',
+  rubric: writingRubric,
+  subject: 'ela',
+  items: [
+    {
+      id: 'item-001',
+      studentResponse: { id: 'r-001', modality: 'text', text: 'My dog Max...' },
+      humanScores: {
+        'argument-structure': 3,
+        'evidence': 2,
+        'voice': 4,
+      }
+    },
+    // ... more items
+  ],
+};
+
+const runner = new BenchmarkRunner({
+  pipeline,
+  version: '1.0.0',
+  creators: ['Your Organization'],
+  onProgress: (completed, total, itemId) => {
+    console.log(`${completed}/${total} — ${itemId}`);
+  },
+});
+
+const result = await runner.run(suite);
+
+console.log(`Accuracy (Cohen's kappa): ${result.accuracy.score.toFixed(2)} — ${result.accuracy.grade}`);
+console.log(`Fairness (max gap):       ${result.fairness.score.toFixed(2)} — ${result.fairness.grade}`);
+console.log(`Actionability:            ${result.actionability.score.toFixed(2)} — ${result.actionability.grade}`);
+console.log(`Alignment:                ${result.alignment.score.toFixed(2)} — ${result.alignment.grade}`);
+
+// FAIR metadata for archival / DOI assignment
+console.log(result.fair.license);   // 'Apache-2.0'
+console.log(result.fair.createdAt); // ISO timestamp
+```
+
+**Metric definitions:**
+| Metric | Measures | Formula |
+|---|---|---|
+| Accuracy | Agreement with human expert scores | Cohen's kappa |
+| Fairness | Demographic score disparity | 1 − (maxGap × 2) |
+| Actionability | % of feedback with concrete suggestions | count(hasSuggestions) / total |
+| Alignment | Criterion coverage + evidence grounding | (coverageRate + evidenceRate) / 2 |
+
+---
+
+## React: `useAssessment`
+
+```tsx
+import { useAssessment } from 'tekimax-omat/react';
+import { AssessmentPipeline, OpenAIProvider } from 'tekimax-omat';
+
+const pipeline = new AssessmentPipeline({
+  provider: new OpenAIProvider({ apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY!, dangerouslyAllowBrowser: true }),
+  rubric: writingRubric,
+  model: 'gpt-4o',
+});
+
+export function FeedbackWidget() {
+  const [text, setText] = useState('');
+
+  const { feedback, isAssessing, streamedText, history, assess, stop, reset } = useAssessment({
+    pipeline,
+    streaming: true,  // false = wait for complete structured feedback
+    onFeedback: (f) => console.log('Feedback ready:', f.normalizedScore),
+    onError: (e) => console.error(e),
+  });
+
+  return (
+    <div>
+      <textarea value={text} onChange={e => setText(e.target.value)} />
+
+      <button
+        onClick={() => assess({ id: crypto.randomUUID(), modality: 'text', text })}
+        disabled={isAssessing}
+      >
+        {isAssessing ? 'Assessing…' : 'Get Feedback'}
+      </button>
+
+      {isAssessing && <button onClick={stop}>Stop</button>}
+
+      {/* Streaming mode: show text as it arrives */}
+      {isAssessing && streamedText && (
+        <pre>{streamedText}</pre>
+      )}
+
+      {/* Structured feedback when complete */}
+      {feedback && (
+        <div>
+          <p>{feedback.overall}</p>
+          <p>Score: {(feedback.normalizedScore * 100).toFixed(0)}%</p>
+
+          <h4>Strengths</h4>
+          <ul>{feedback.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+
+          <h4>Next Steps</h4>
+          <ul>{feedback.nextSteps.map((s, i) => <li key={i}>{s}</li>)}</ul>
+
+          <p><em>{feedback.encouragement}</em></p>
+
+          <details>
+            <summary>Criterion Scores</summary>
+            {feedback.scores.map(s => (
+              <div key={s.criterionId}>
+                <strong>{s.criterionName}:</strong> {s.score} ({s.levelLabel})
+                <p>{s.rationale}</p>
+              </div>
+            ))}
+          </details>
+        </div>
+      )}
+
+      {history.length > 1 && (
+        <button onClick={reset}>Clear history</button>
+      )}
+    </div>
+  );
+}
+```
+
+### `useAssessment` API
+
+| Property | Type | Description |
+|---|---|---|
+| `feedback` | `FormativeFeedback \| null` | Latest complete structured feedback |
+| `isAssessing` | `boolean` | True while request is in flight |
+| `streamedText` | `string` | Accumulated streamed text (streaming mode only) |
+| `history` | `FormativeFeedback[]` | All feedback from this session |
+| `assess(response)` | `(StudentResponse) => Promise<void>` | Submit a response for assessment |
+| `stop()` | `() => void` | Cancel in-flight assessment |
+| `reset()` | `() => void` | Clear feedback and history |
+
+---
+
+## Full Setup Example
+
+```typescript
+import {
+  AssessmentPipeline,
+  FairnessAuditPlugin,
+  RubricValidatorPlugin,
+  LearningProgressionPlugin,
+  BenchmarkRunner,
+  OpenAIProvider,
+} from 'tekimax-omat';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
+
+const fairness = new FairnessAuditPlugin({ warningThreshold: 0.1, criticalThreshold: 0.2 });
+const validator = new RubricValidatorPlugin({ rubric: myRubric });
+const progression = new LearningProgressionPlugin({ progressions: myProgressions });
+
+const pipeline = new AssessmentPipeline({
+  provider,
+  rubric: myRubric,
+  model: 'gpt-4o',
+  feedbackLanguage: 'en',
+  plugins: [fairness, validator],
+});
+
+// Assess
+const feedback = await pipeline.assess(studentResponse);
+
+// Annotate with developmental stage
+progression.annotate(feedback);
+
+// Fairness report after a batch
+const report = fairness.getReport();
+
+// Benchmark against human scores
+const runner = new BenchmarkRunner({ pipeline, version: '1.0.0', creators: ['My Org'] });
+const benchmarkResult = await runner.run(mySuite);
+```
+
+---
+
+## Workforce Development
+
+Use `WorkforceAssessmentPipeline` for competency-based assessments in WIOA programs, apprenticeships, CTE, and workforce credentialing.
+
+```typescript
+import {
+  WorkforceAssessmentPipeline,
+  WorkforceFairnessAuditPlugin,
+  createWorkforceRubric,
+} from 'tekimax-omat';
+
+const rubric = createWorkforceRubric({
+  id: 'it-support-v1',
+  name: 'IT Support Technician — Entry Level',
+  occupation: 'IT Support Technician',
+  occupationCode: '15-1232.00',
+});
+
+const fairness = new WorkforceFairnessAuditPlugin();
+
+const pipeline = new WorkforceAssessmentPipeline({
+  provider,
+  model: 'gpt-4o',
+  rubric,
+  occupationalContext: 'Entry-level IT helpdesk support in a healthcare setting',
+  plugins: [fairness],
+});
+
+const feedback = await pipeline.assessWorkforce({
+  id: 'r-001',
+  modality: 'text',
+  text: 'To troubleshoot a network issue, I would first check the physical connections...',
+  taskPrompt: 'Describe how you would troubleshoot a workstation that cannot connect to the network.',
+  assessmentType: 'skills-check',
+  demographics: {
+    employmentStatus: 'unemployed',
+    program: 'WIOA',
+    credentialTarget: 'CompTIA A+',
+    barriers: ['justice-involved'],
+    ageGroup: 'adult',
+  },
+});
+
+console.log(feedback.strengths);
+console.log(feedback.nextSteps);
+
+// Equity report for grant reporting
+const report = fairness.getWorkforceReport();
+console.log(report.disparityFlags);
+```
+
+### Workforce Demographic Tags
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `employmentStatus` | `'employed' \| 'unemployed' \| 'underemployed' \| 'in-training' \| 'seeking'` | Employment context |
+| `program` | `'WIOA' \| 'YouthBuild' \| 'ApprenticeshipUSA' \| 'PerkinsCTE' \| 'JobCorps' \| ...` | Funding program |
+| `credentialTarget` | `string` | Target credential, e.g. `'CompTIA A+'`, `'CNA'`, `'CDL-A'` |
+| `occupationCode` | `string` | O*NET-SOC code, e.g. `'15-1232.00'` |
+| `barriers` | `WorkforceBarrier[]` | `'justice-involved'`, `'veteran'`, `'housing-insecure'`, `'childcare'`, ... |
+| `ageGroup` | `'youth' \| 'adult' \| 'older-worker'` | Age cohort |
+| `competencyLevel` | `'foundational' \| 'developing' \| 'proficient' \| 'advanced' \| 'expert'` | Self-reported level |
+
+Demographics are **never sent to the model** — stored locally for `WorkforceFairnessAuditPlugin` equity reporting only.
+
+---
+
+## Healthcare & Health Literacy
+
+Use `HealthLiteracyPipeline` to assess patient comprehension of health information, discharge instructions, and medication guidance.
+
+```typescript
+import {
+  HealthLiteracyPipeline,
+  ClinicalPIIFilterPlugin,
+  HEALTH_LITERACY_COMPREHENSION_RUBRIC,
+  MEDICATION_INSTRUCTIONS_RUBRIC,
+} from 'tekimax-omat';
+
+const pipeline = new HealthLiteracyPipeline({
+  provider,
+  model: 'gpt-4o',
+  rubric: MEDICATION_INSTRUCTIONS_RUBRIC,
+  clinicalContext: 'Post-discharge instructions for metformin 500mg twice daily',
+  plugins: [new ClinicalPIIFilterPlugin()],  // Redacts MRN, NPI, ICD-10, NDC, DEA, DOB
+  feedbackLanguage: 'es',                    // Generate feedback in Spanish
+});
+
+const feedback = await pipeline.assessPatient({
+  id: 'p-001',
+  modality: 'text',
+  text: 'I take one pill in the morning and one at night with food. I should not drink alcohol.',
+  language: 'en',
+  demographics: {
+    healthLiteracyLevel: 'basic',
+    limitedEnglishProficiency: true,
+    language: 'es',
+    ageGroup: 'older-adult',
+    careContext: 'primary-care',
+  },
+});
+
+console.log(feedback.strengths);
+// ["Correctly identified dosing schedule", "Recognized the food requirement"]
+
+console.log(feedback.nextSteps);
+// ["Ask your provider what to do if you forget a dose", "Learn the side effects to watch for"]
+```
+
+### Pre-built Rubrics
+
+| Rubric | Use case |
+|--------|---------|
+| `HEALTH_LITERACY_COMPREHENSION_RUBRIC` | General health information comprehension — recall, interpretation, action steps, safety signals |
+| `MEDICATION_INSTRUCTIONS_RUBRIC` | Medication adherence — dose/timing, interactions, side effects |
+
+### ClinicalPIIFilterPlugin — What Gets Redacted
+
+| Identifier | Pattern | Example |
+|-----------|---------|---------|
+| MRN | `MRN` / `MR#` + 5–10 digits | `MRN 1234567` → `[REDACTED MRN]` |
+| NPI | `NPI` + 10 digits | `NPI 1234567893` → `[REDACTED NPI]` |
+| DEA | 2 letters + 7 digits | `AB1234563` → `[REDACTED DEA]` |
+| ICD-10 | Letter + 2 digits + optional decimal | `M79.3`, `E11.9` → `[REDACTED ICD10]` |
+| NDC | Drug code format `XXXXX-XXXX-XX` | `00071-0155-23` → `[REDACTED NDC]` |
+| Date of birth | MM/DD/YYYY, MM-DD-YYYY | `03/15/1962` → `[REDACTED DOB]` |
+| Insurance member ID | `Member ID` / `Member #` + alphanumeric | → `[REDACTED MEMBER_ID]` |
+| Standard PII | Email, SSN, phone, card | Same as `PIIFilterPlugin` |
+
+All patterns are ReDoS-safe (no nested quantifiers).

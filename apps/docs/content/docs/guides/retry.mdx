@@ -12,7 +12,7 @@ The SDK provides two retry utilities: `withRetry` for wrapping individual calls,
 Wrap any async function with retry and exponential backoff:
 
 ```typescript
-import { withRetry } from 'tekimax-ts'
+import { withRetry } from 'tekimax-omat'
 
 const result = await withRetry(
   () => client.text.generate({
@@ -35,7 +35,7 @@ The delay sequence would be: `1000ms → 2000ms → 4000ms` (with ±25% jitter b
 Apply retry to every call through a provider. All `chat`, `chatStream`, and multi-modal methods get retry automatically.
 
 ```typescript
-import { Tekimax, OpenAIProvider, createRetryProvider } from 'tekimax-ts'
+import { Tekimax, OpenAIProvider, createRetryProvider } from 'tekimax-omat'
 
 const provider = createRetryProvider(
   new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! }),

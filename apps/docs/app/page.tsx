@@ -62,7 +62,7 @@ export default function HomePage() {
             <div className="p-12 lg:p-24 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-border">
               <div className="mb-8 inline-flex">
                 <span className="inline-block border border-foreground px-3 py-1 text-xs font-bold uppercase tracking-wider">
-                  v0.1.9 Latest
+                  v0.4.1 Latest
                 </span>
               </div>
 
@@ -74,7 +74,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-lg text-muted-foreground mb-12 max-w-md leading-relaxed">
-                <span className="font-mono text-green-400 font-bold">[<span className="bg-foreground text-purple-400">OMAT</span>]</span> An open-source framework for K-12 edtech developers to build AI-powered formative assessments using multimodal student inputs. Built on <span className="font-bold text-foreground">tekimax-omat</span>.
+                <span className="font-mono text-green-400 font-bold">[<span className="bg-foreground text-purple-400">OMAT</span>]</span> Open-source AI infrastructure for organizations building software for good — education, workforce development, nonprofits, civic tech, and healthcare. Built on <span className="font-bold text-foreground">tekimax-omat</span>.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -108,9 +108,9 @@ export default function HomePage() {
                 <div className="flex items-center justify-between border border-border bg-background p-4">
                   <div className="font-mono text-sm">
                     <span className="text-green-600 mr-4">➜</span>
-                    npm install tekimax-ts
+                    npm install tekimax-omat
                   </div>
-                  <CopyButton text="npm install tekimax-ts" />
+                  <CopyButton text="npm install tekimax-omat" />
                 </div>
               </div>
 
@@ -119,7 +119,7 @@ export default function HomePage() {
                 <Code
                   title="USAGE_PREVIEW.TS"
                   lang="typescript"
-                  code={`import { Tekimax, AnthropicProvider } from 'tekimax-ts';
+                  code={`import { Tekimax, AnthropicProvider } from 'tekimax-omat';
 
 const client = new Tekimax({
   provider: new AnthropicProvider({
@@ -127,11 +127,12 @@ const client = new Tekimax({
   })
 });
 
-const stream = await client.text.chat.completions.create({
-  model: 'claude-4.6',
+for await (const chunk of client.text.chat.completions.createStream({
+  model: 'claude-sonnet-4-6',
   messages: [{ role: 'user', content: 'Hello' }],
-  stream: true
-});`}
+})) {
+  process.stdout.write(chunk.delta);
+}`}
                 />
               </div>
             </div>
@@ -154,7 +155,7 @@ const stream = await client.text.chat.completions.create({
                 OMAT — Open Multimodal<br />Assessment Toolkit
               </h2>
               <p className="text-muted-foreground max-w-2xl leading-relaxed mb-12">
-                An open-source framework enabling K-12 edtech developers to build, evaluate, and improve AI-powered formative assessments using multimodal student inputs — text, speech, drawing, and structured responses.
+                An open-source framework for any organization building AI-powered formative assessments — K–12 programs, workforce development, nonprofit outcome measurement, healthcare education, and more. Accepts text, speech, drawing, and handwriting inputs.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-border border border-border">
@@ -183,7 +184,7 @@ const stream = await client.text.chat.completions.create({
 
               <div className="mt-8 border border-amber-600/30 bg-amber-600/5 p-6">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  <span className="text-amber-600 font-bold uppercase tracking-wider text-xs">Equity-Centered by Design</span> — OMAT centers multilingual learners, students with disabilities, and underserved communities. Speech and drawing inputs ensure students who can&apos;t yet write can still demonstrate what they know.
+                  <span className="text-amber-600 font-bold uppercase tracking-wider text-xs">Equity-Centered by Design</span> — OMAT centers multilingual learners, individuals with disabilities, and communities that need it most. Multimodal inputs like speech and drawing ensure anyone who can&apos;t yet express ideas in writing can still demonstrate what they know.
                 </p>
               </div>
 
@@ -196,7 +197,7 @@ const stream = await client.text.chat.completions.create({
                 <a href="https://k12-ai-infrastructure.org/faq-march-8th-rfp/" target="_blank" rel="noreferrer" className="underline hover:text-foreground transition-colors">
                   K-12 AI Infrastructure Program
                 </a>
-                {' '}— that AI in education deserves shared, open infrastructure built for the students who need it most.
+                {' '}— their proposal inspired OMAT&apos;s mission: that AI-powered assessment deserves shared, open infrastructure, and that vision extends beyond K–12 to any sector where feedback quality and equity matter.
               </p>
             </div>
           </div>

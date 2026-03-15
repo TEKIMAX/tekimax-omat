@@ -1,7 +1,9 @@
 {
     "pages": [
-        "multi-modal-workflows",
+        "assessment",
+        "api-skills",
         "react",
+        "multi-modal-workflows",
         "thinking",
         "structured-output",
         "cost-tracking",

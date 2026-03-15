@@ -10,7 +10,7 @@ The `estimateCost` utility maps token usage to estimated USD costs using a built
 ## Basic Usage
 
 ```typescript
-import { estimateCost } from 'tekimax-ts'
+import { estimateCost } from 'tekimax-omat'
 
 const result = await client.text.generate({
   model: 'gpt-4o',
@@ -32,7 +32,7 @@ Pricing is included for OpenAI (`gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `o1`, `o
 Use `getSupportedCostModels()` to list all models in the price table:
 
 ```typescript
-import { getSupportedCostModels } from 'tekimax-ts'
+import { getSupportedCostModels } from 'tekimax-omat'
 
 console.log(getSupportedCostModels())
 // ['gpt-4o', 'gpt-4o-mini', 'claude-3-5-sonnet-latest', ...]
@@ -43,7 +43,7 @@ console.log(getSupportedCostModels())
 Register your own models or override existing prices:
 
 ```typescript
-import { registerModelPrice } from 'tekimax-ts'
+import { registerModelPrice } from 'tekimax-omat'
 
 registerModelPrice('my-fine-tuned-model', {
   inputPerMillion: 3.00,

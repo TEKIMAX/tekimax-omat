@@ -1,0 +1,681 @@
+---
+title: API Skills — Bring Your Own API
+description: Register any REST endpoint as a model-callable skill. Middleware between any client and any API.
+---
+
+# API Skills — Bring Your Own API
+
+`ApiSkillPlugin` makes tekimax-omat a **middleware layer** between any AI model and any REST API you own or consume. Register endpoints as "skills" — the model calls them like tools, the plugin executes the HTTP requests securely, and results come back into the conversation automatically.
+
+This works for **any API**: your own backend, a third-party SaaS, a government open data API, a nonprofit's case management system — anything reachable over HTTPS.
+
+---
+
+## How it works
+
+```
+User message
+     ↓
+  LLM (gpt-4o, claude, etc.)
+     ↓ tool_call: search_programs(category="tech", city="Oakland")
+  ApiSkillPlugin.execute()
+     ↓ GET https://api.myorg.com/programs?category=tech&city=Oakland
+     ↓ Authorization: Bearer sk-...  (never seen by the model)
+  Your API
+     ↓ { programs: [...] }
+  tool result message appended to conversation
+     ↓
+  LLM generates final answer using real data
+```
+
+The model never sees your API keys, internal URLs, or raw credentials. Auth is resolved at execution time and only in the HTTP layer.
+
+---
+
+## Security Rules (SLA)
+
+Before deploying any `ApiSkillPlugin` integration, verify all of the following:
+
+| Rule | Requirement |
+|---|---|
+| **No credentials in prompts** | Auth tokens are in `defaultAuth` / endpoint `auth` — never in messages or tool descriptions |
+| **SSRF blocked** | Private IPs (10.x, 172.16-31.x, 192.168.x), loopback (127.x, localhost), and cloud metadata (169.254.x) are blocked automatically |
+| **HTTPS only** | All production endpoints must use `https://`. HTTP is only acceptable for local development |
+| **Input validation** | Required parameters are validated before any HTTP call. Never pass raw LLM strings to your DB |
+| **Timeout set** | Always set `timeout` (default: 15s). Prevents the model from hanging on slow or unresponsive APIs |
+| **Env vars for secrets** | `token`, `apiKey`, `password` values must come from environment variables, never hardcoded |
+| **Least privilege** | Register only the operations the model needs. Don't expose admin or destructive endpoints unless required |
+| **PII in responses** | If your API returns PII, combine with `PIIFilterPlugin` or sanitize before returning to the model |
+| **Rate limit your API** | Use `ProvisionPlugin`'s rate limiter or implement rate limiting on your own API to prevent abuse |
+| **Audit log** | Use `onSkillCall` and `onSkillResult` callbacks to log every model-initiated API call |
+
+---
+
+## Installation
+
+```bash
+npm install tekimax-omat
+```
+
+---
+
+## Example 1 — Pure SDK (Node.js / Server)
+
+Register CRUD endpoints and use them with `generateText` for a full agentic loop.
+
+```typescript
+import {
+  ApiSkillPlugin,
+  generateText,
+  OpenAIProvider,
+} from 'tekimax-omat'
+
+// ── 1. Set up the provider ─────────────────────────────────────────────────
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! })
+
+// ── 2. Register your API endpoints as skills ───────────────────────────────
+const skills = new ApiSkillPlugin({
+  baseUrl: 'https://api.myorg.com',
+  defaultAuth: {
+    type: 'bearer',
+    token: process.env.ORG_API_TOKEN!, // Never hardcode
+  },
+  defaultHeaders: {
+    'X-App-Version': '1.0',
+  },
+  timeout: 10_000,
+
+  // Audit log every model-initiated API call
+  onSkillCall: (name, args) => {
+    auditLog.write({ event: 'skill_call', skill: name, args, ts: Date.now() })
+  },
+  onSkillResult: (name, result) => {
+    auditLog.write({ event: 'skill_result', skill: name, status: result.status, ok: result.ok })
+  },
+})
+
+// Register individual endpoints
+skills.registerAll([
+  {
+    name: 'search_programs',
+    description: 'Search available workforce development programs by category, city, or population served',
+    method: 'GET',
+    url: '/programs',
+    queryParams: ['category', 'city', 'population', 'limit'],
+    parametersSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          description: 'Program category: technology, healthcare, trades, business, arts',
+        },
+        city: { type: 'string', description: 'City name' },
+        population: {
+          type: 'string',
+          description: 'Target population: veterans, returning_citizens, youth, adults',
+        },
+        limit: { type: 'number', description: 'Max results (default 10)' },
+      },
+      required: ['category'],
+    },
+  },
+  {
+    name: 'get_program',
+    description: 'Get full details of a specific program by ID',
+    method: 'GET',
+    url: '/programs/{id}',
+    pathParams: ['id'],
+    parametersSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'Program ID' } },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'create_referral',
+    description: 'Create a referral for a participant to a program',
+    method: 'POST',
+    url: '/referrals',
+    parametersSchema: {
+      type: 'object',
+      properties: {
+        participantId: { type: 'string', description: 'Participant ID' },
+        programId: { type: 'string', description: 'Program ID' },
+        notes: { type: 'string', description: 'Referral notes' },
+      },
+      required: ['participantId', 'programId'],
+    },
+  },
+])
+
+// ── 3. Run an agentic loop — model calls your API automatically ────────────
+const result = await generateText({
+  adapter: provider,
+  model: 'gpt-4o',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are an intake coordinator. Help participants find and apply to programs.',
+    },
+    {
+      role: 'user',
+      content: 'I am a veteran in Oakland looking for tech training programs.',
+    },
+  ],
+  // Pass skill tools directly — or use autoInject: true and skip this
+  tools: Object.fromEntries(
+    skills.skillNames.map(name => [
+      name,
+      {
+        ...skills.getTool(name)!,
+        execute: (args: Record<string, unknown>) => skills.execute(name, args).then(r => r.data),
+      },
+    ])
+  ),
+  maxSteps: 5,
+})
+
+console.log(result.text)
+// "I found 3 technology training programs for veterans in Oakland:
+//  1. TechPath — 12-week coding bootcamp, free for veterans..."
+```
+
+---
+
+## Example 2 — From an OpenAPI Spec
+
+If your API has an OpenAPI spec, register all operations automatically:
+
+```typescript
+import { ApiSkillPlugin, Tekimax, AnthropicProvider } from 'tekimax-omat'
+import myApiSpec from './openapi.json' // OAS 3.x spec
+
+const skills = new ApiSkillPlugin({
+  defaultAuth: { type: 'apikey', header: 'X-API-Key', value: process.env.MY_API_KEY! },
+})
+
+// Auto-generate tools from the spec
+skills.registerFromOpenApi({
+  spec: myApiSpec,
+  baseUrl: 'https://api.myorg.com/v2',
+  // Only expose these operations to the model
+  includeOperations: ['searchPrograms', 'getProgram', 'listLocations'],
+})
+
+console.log(skills.skillNames)
+// ['searchPrograms', 'getProgram', 'listLocations']
+
+// Use with any provider
+const client = new Tekimax({
+  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY! }),
+  plugins: [skills], // auto-injects tools into every request
+})
+
+const response = await client.text.chat.completions.create({
+  model: 'claude-sonnet-4-6',
+  messages: [{ role: 'user', content: 'What programs are available in Chicago?' }],
+  // tools auto-injected by the plugin — no need to pass them manually
+})
+```
+
+---
+
+## Example 3 — Vite React UI
+
+Full working React component. The model calls your APIs in the browser via your own backend proxy. **Never expose API keys to the browser directly.**
+
+### Backend Proxy (Express/Next.js API route)
+
+```typescript
+// server.ts or pages/api/chat.ts
+import express from 'express'
+import { ApiSkillPlugin, OpenAIProvider } from 'tekimax-omat'
+import { Conversation } from 'tekimax-omat'
+
+const app = express()
+app.use(express.json())
+
+// Skills are configured server-side — no secrets reach the browser
+const skills = new ApiSkillPlugin({
+  baseUrl: process.env.PROGRAMS_API_URL!,
+  defaultAuth: { type: 'bearer', token: process.env.PROGRAMS_API_TOKEN! },
+  onSkillCall: (name, args) => console.log(`[API] ${name}`, args),
+})
+
+skills.registerAll([
+  {
+    name: 'search_programs',
+    description: 'Search programs by category, city, or target population',
+    method: 'GET',
+    url: '/programs',
+    queryParams: ['category', 'city', 'population'],
+    parametersSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string' },
+        city: { type: 'string' },
+        population: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'get_eligibility',
+    description: 'Check if a person is eligible for a program',
+    method: 'POST',
+    url: '/programs/{programId}/eligibility',
+    pathParams: ['programId'],
+    parametersSchema: {
+      type: 'object',
+      properties: {
+        programId: { type: 'string' },
+        age: { type: 'number' },
+        zipCode: { type: 'string' },
+      },
+      required: ['programId'],
+    },
+  },
+])
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! })
+
+// In-memory sessions (use Redis for production)
+const sessions = new Map<string, Conversation>()
+
+app.post('/api/chat', async (req, res) => {
+  const { message, sessionId } = req.body as { message: string; sessionId: string }
+
+  // Validate input — never trust the client
+  if (!message || typeof message !== 'string' || message.length > 4000) {
+    return res.status(400).json({ error: 'Invalid message' })
+  }
+  if (!sessionId || typeof sessionId !== 'string') {
+    return res.status(400).json({ error: 'Invalid sessionId' })
+  }
+
+  // Get or create a conversation session
+  if (!sessions.has(sessionId)) {
+    sessions.set(sessionId, new Conversation(provider, {
+      model: 'gpt-4o',
+      system: 'You are a helpful program navigator. Help people find and apply to workforce programs.',
+      plugins: [], // Add TokenAwareContextPlugin, PIIFilterPlugin, etc. here
+    }))
+  }
+  const convo = sessions.get(sessionId)!
+
+  // Build tools from registered skills
+  const tools = Object.fromEntries(
+    skills.skillNames.map(name => [
+      name,
+      {
+        ...skills.getTool(name)!,
+        execute: (args: Record<string, unknown>) =>
+          skills.execute(name, args).then(r => r.data ?? r.error),
+      },
+    ])
+  )
+
+  // Stream the response back to the client
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+
+  try {
+    for await (const chunk of convo.stream(message)) {
+      res.write(`data: ${JSON.stringify({ delta: chunk.delta })}\n\n`)
+    }
+    res.write('data: [DONE]\n\n')
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+  } finally {
+    res.end()
+  }
+})
+
+app.listen(3000, () => console.log('Server running on http://localhost:3000'))
+```
+
+### Vite React Frontend
+
+```tsx
+// src/App.tsx
+import { useState, useRef, useCallback } from 'react'
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export function ChatApp() {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const sessionId = useRef(crypto.randomUUID())
+  const abortRef = useRef<AbortController | null>(null)
+
+  const sendMessage = useCallback(async () => {
+    const text = input.trim()
+    if (!text || isLoading) return
+
+    setInput('')
+    setMessages(prev => [...prev, { role: 'user', content: text }])
+    setIsLoading(true)
+
+    // Add empty assistant message to stream into
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+
+    abortRef.current = new AbortController()
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, sessionId: sessionId.current }),
+        signal: abortRef.current.signal,
+      })
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        const lines = decoder.decode(value).split('\n')
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') break
+
+          try {
+            const parsed = JSON.parse(data) as { delta?: string; error?: string }
+            if (parsed.error) {
+              setMessages(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1]!.content = `Error: ${parsed.error}`
+                return updated
+              })
+              break
+            }
+            if (parsed.delta) {
+              setMessages(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1]!.content += parsed.delta
+                return updated
+              })
+            }
+          } catch {
+            // Malformed SSE chunk — skip
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1]!.content = 'Something went wrong. Please try again.'
+        return updated
+      })
+    } finally {
+      setIsLoading(false)
+      abortRef.current = null
+    }
+  }, [input, isLoading])
+
+  const stop = () => {
+    abortRef.current?.abort()
+    setIsLoading(false)
+  }
+
+  return (
+    <div className="flex flex-col h-screen max-w-2xl mx-auto p-4">
+      <h1 className="text-xl font-bold mb-4">Program Navigator</h1>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        {messages.length === 0 && (
+          <p className="text-gray-500 text-sm">
+            Ask me to find workforce programs, check eligibility, or explore options.
+          </p>
+        )}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`p-3 rounded-lg text-sm ${
+              m.role === 'user'
+                ? 'bg-blue-100 ml-auto max-w-[85%] text-right'
+                : 'bg-gray-100 mr-auto max-w-[85%]'
+            }`}
+          >
+            <span className="text-xs text-gray-500 block mb-1">
+              {m.role === 'user' ? 'You' : 'Navigator'}
+            </span>
+            <p className="whitespace-pre-wrap">{m.content}</p>
+          </div>
+        ))}
+        {isLoading && messages[messages.length - 1]?.content === '' && (
+          <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-400 w-fit">
+            Thinking…
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2">
+        <input
+          className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+          placeholder="Ask about programs, eligibility, or next steps…"
+          disabled={isLoading}
+        />
+        {isLoading ? (
+          <button
+            onClick={stop}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+          >
+            Send
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## Example 4 — Third-Party API (Public REST API)
+
+Integrate any third-party API — no OpenAPI spec needed. Here's a complete example with a public jobs API:
+
+```typescript
+import { ApiSkillPlugin, Tekimax, OpenAIProvider } from 'tekimax-omat'
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! })
+
+const skills = new ApiSkillPlugin({
+  // No baseUrl needed — each endpoint specifies its full URL
+  timeout: 8_000,
+})
+
+// Third-party jobs API
+skills.registerEndpoint({
+  name: 'search_jobs',
+  description: 'Search job listings from an external jobs board by keyword, location, and job type',
+  method: 'GET',
+  url: 'https://jobs.api.example.com/v1/search',
+  queryParams: ['q', 'location', 'type', 'salary_min', 'page'],
+  auth: {
+    type: 'apikey',
+    header: 'X-RapidAPI-Key',
+    value: process.env.RAPIDAPI_KEY!,
+  },
+  headers: { 'X-RapidAPI-Host': 'jobs.api.example.com' },
+  parametersSchema: {
+    type: 'object',
+    properties: {
+      q: { type: 'string', description: 'Job title or keywords, e.g. "software engineer"' },
+      location: { type: 'string', description: 'City or remote' },
+      type: { type: 'string', enum: ['full_time', 'part_time', 'contract', 'internship'] },
+      salary_min: { type: 'number', description: 'Minimum annual salary in USD' },
+      page: { type: 'number', description: 'Page number (default 1)' },
+    },
+    required: ['q'],
+  },
+})
+
+// Your own internal database API for participant records
+skills.registerEndpoint({
+  name: 'save_job_application',
+  description: 'Record that a participant has applied to a job listing',
+  method: 'POST',
+  url: 'https://api.myorg.com/participants/{participantId}/applications',
+  pathParams: ['participantId'],
+  auth: {
+    type: 'bearer',
+    token: process.env.ORG_API_TOKEN!,
+  },
+  parametersSchema: {
+    type: 'object',
+    properties: {
+      participantId: { type: 'string', description: 'Internal participant ID' },
+      jobTitle: { type: 'string' },
+      companyName: { type: 'string' },
+      jobUrl: { type: 'string', description: 'Link to the job posting' },
+      appliedAt: { type: 'string', description: 'ISO 8601 date string' },
+    },
+    required: ['participantId', 'jobTitle', 'companyName'],
+  },
+})
+
+// The model now has access to two completely different APIs in one conversation
+const client = new Tekimax({ provider, plugins: [skills] })
+
+const response = await client.text.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [
+    { role: 'system', content: 'You help job seekers find and apply to jobs.' },
+    { role: 'user', content: 'Find me software engineering jobs in Austin and save the best match for participant P-1024' },
+  ],
+})
+```
+
+---
+
+## Direct Execution (No Model)
+
+You can also call skills directly from your own code, bypassing the model entirely:
+
+```typescript
+const result = await skills.execute('search_programs', {
+  category: 'technology',
+  city: 'Oakland',
+  population: 'veterans',
+})
+
+if (result.ok) {
+  console.log(result.data)   // API response
+  console.log(result.latency) // ms
+} else {
+  console.error(result.error, result.status)
+}
+
+// Execute multiple tool calls returned by the model at once
+const toolCallResults = await skills.executeToolCalls(response.message.toolCalls ?? [])
+
+for (const { id, toolName, result: r } of toolCallResults) {
+  console.log(`[${toolName}] ${r.status} in ${r.latency}ms`)
+  // Append as tool result messages for the next turn
+  messages.push({
+    role: 'tool',
+    content: JSON.stringify(r.ok ? r.data : { error: r.error }),
+    toolCallId: id,
+    name: toolName,
+  })
+}
+```
+
+---
+
+## Security Checklist for Deployment
+
+```typescript
+// ✅ All secrets from environment variables
+const skills = new ApiSkillPlugin({
+  defaultAuth: { type: 'bearer', token: process.env.API_TOKEN! },
+})
+
+// ✅ Audit log every model API call
+const skills = new ApiSkillPlugin({
+  onSkillCall: (name, args) => auditLog.record({ name, args }),
+  onSkillResult: (name, r) => auditLog.record({ name, status: r.status }),
+})
+
+// ✅ Combine with PIIFilterPlugin on the model side
+const client = new Tekimax({
+  provider,
+  plugins: [new PIIFilterPlugin(), skills],
+})
+
+// ✅ Validate responses before returning to model (sanitize PII)
+const skills = new ApiSkillPlugin({
+  onSkillResult: (_name, result) => {
+    if (result.ok && typeof result.data === 'object') {
+      // Strip SSN, DOB, etc. from API responses before the model sees them
+      stripPII(result.data)
+    }
+  },
+})
+
+// ❌ Never do this — hardcoded credentials
+const skills = new ApiSkillPlugin({
+  defaultAuth: { type: 'bearer', token: 'sk-abc123' }, // DON'T
+})
+
+// ❌ Never expose skills server-side config to the browser
+// Put ApiSkillPlugin on your server, proxy requests through /api/chat
+```
+
+---
+
+## `ApiSkillPlugin` Reference
+
+### Constructor Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `baseUrl` | `string` | — | Base URL prepended to relative endpoint URLs |
+| `defaultAuth` | `ApiSkillAuth` | `{ type: 'none' }` | Auth applied to all skills unless overridden |
+| `defaultHeaders` | `Record<string, string>` | `{}` | Headers sent with every skill HTTP call |
+| `timeout` | `number` | `15000` | Default timeout in ms |
+| `autoInject` | `boolean` | `true` | Auto-inject tools into every outgoing request |
+| `onSkillCall` | `(name, args) => void` | — | Audit hook before execution |
+| `onSkillResult` | `(name, result) => void` | — | Audit hook after execution |
+
+### Auth Types
+
+```typescript
+// Bearer token (most common)
+{ type: 'bearer', token: process.env.API_TOKEN! }
+
+// API key header (e.g. RapidAPI, custom APIs)
+{ type: 'apikey', header: 'X-API-Key', value: process.env.API_KEY! }
+
+// HTTP Basic auth
+{ type: 'basic', username: 'myapp', password: process.env.API_PASSWORD! }
+
+// No auth (public APIs)
+{ type: 'none' }
+```

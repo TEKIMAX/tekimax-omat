@@ -6,11 +6,14 @@ import type {
     Message,
     StreamChunk,
     ToolDefinition,
-    ToolCall
+    ToolCall,
+    ImageAnalysisOptions,
+    ImageAnalysisResult,
+    VisionCapability,
 } from '../../core'
 
-// OpenRouter uses OpenAI-compatible API
-export class OpenRouterProvider implements AIProvider {
+// OpenRouter uses OpenAI-compatible API with vision passthrough
+export class OpenRouterProvider implements AIProvider, VisionCapability {
     name = 'openrouter'
     private client: OpenAI
 
@@ -23,6 +26,42 @@ export class OpenRouterProvider implements AIProvider {
                 'X-Title': 'Tekimax SDK'
             }
         })
+    }
+
+    async analyzeImage(options: ImageAnalysisOptions): Promise<ImageAnalysisResult> {
+        // OpenRouter passes image_url content to the underlying vision model (GPT-4o, Claude, Gemini, etc.)
+        const imageUrl = options.image instanceof Buffer
+            ? `data:image/png;base64,${options.image.toString('base64')}`
+            : options.image as string
+
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            ...(options.messages ? this.mapMessages(options.messages) : []),
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: options.prompt || 'Describe this image' },
+                    { type: 'image_url', image_url: { url: imageUrl } },
+                ],
+            },
+        ]
+
+        const response = await this.client.chat.completions.create({
+            model: options.model,
+            messages,
+            max_tokens: 1_024,
+        })
+
+        const choice = response.choices[0]
+        if (!choice) throw new Error('No choice returned from OpenRouter vision request')
+
+        return {
+            content: choice.message.content || '',
+            usage: response.usage ? {
+                inputTokens: response.usage.prompt_tokens,
+                outputTokens: response.usage.completion_tokens,
+                totalTokens: response.usage.total_tokens,
+            } : undefined,
+        }
     }
 
     async chat(options: ChatOptions): Promise<ChatResult> {

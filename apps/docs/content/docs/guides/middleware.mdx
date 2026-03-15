@@ -10,7 +10,7 @@ The `wrapProvider` function applies middleware interceptors to any provider. Mid
 ## Basic Usage
 
 ```typescript
-import { Tekimax, OpenAIProvider, wrapProvider, type Middleware } from 'tekimax-ts'
+import { Tekimax, OpenAIProvider, wrapProvider, type Middleware } from 'tekimax-omat'
 
 const logger: Middleware = {
   name: 'logger',
@@ -68,7 +68,7 @@ const provider = wrapProvider(base, [
 A ready-to-use logging middleware is included:
 
 ```typescript
-import { wrapProvider, loggingMiddleware } from 'tekimax-ts'
+import { wrapProvider, loggingMiddleware } from 'tekimax-omat'
 
 const provider = wrapProvider(base, [
   loggingMiddleware({ prefix: '[ai]' })
@@ -120,7 +120,7 @@ const fallback: Middleware = {
 Stack middleware for production-grade observability:
 
 ```typescript
-import { wrapProvider, loggingMiddleware, createRetryProvider, estimateCost } from 'tekimax-ts'
+import { wrapProvider, loggingMiddleware, createRetryProvider, estimateCost } from 'tekimax-omat'
 
 const costTracker: Middleware = {
   name: 'cost-tracker',

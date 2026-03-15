@@ -1,104 +1,317 @@
 ---
-title: Plugins (Middleware)
-description: Snap in security, telemetry, and scalability hooks directly into the SDK request lifecycle.
+title: Plugins
+description: Middleware hooks for logging, PII redaction, context management, fairness auditing, action tagging, and more.
 ---
 
-The Tekimax SDK provides a robust middleware architecture via **Plugins**. 
+The SDK provides a middleware architecture via **Plugins** — snap in cross-cutting concerns (logging, security, fairness, context trimming) directly into the request lifecycle without wrapping the entire client.
 
-Instead of wrapping the entire SDK or duplicating logic across your app to handle caching, redaction, or logging, you can plug these directly into the core `Tekimax` client.
-
-## Pre-built Plugins
-
-The SDK exports three core plugins out of the box used for Enterprise readiness:
-
-1. **`LoggerPlugin`** (Telemetry): Automatically logs requests, stream chunks, tokens, and tool execution boundaries.
-2. **`PIIFilterPlugin`** (Security): Redacts standard patterns like emails (`[REDACTED EMAIL]`) and SSNs before they hit the provider.
-3. **`MaxContextOverflowPlugin`** (Scalability): Prevents token bloat in long-running loops by gently truncating the oldest messages (while safely preserving your System prompt).
-4. **`ProvisionPlugin`** (API Gateway): Endpoint-agnostic REST client with deployment-scoped auth, rate limiting, and namespace factory. See the [full ProvisionPlugin guide](/docs/guides/provision-plugin).
-
-### Usage
-
-Pass the `plugins` array when initializing your `Tekimax` client:
+## The Plugin Interface
 
 ```typescript
-import { 
-    Tekimax, 
-    OpenAIProvider, 
-    PIIFilterPlugin, 
-    LoggerPlugin, 
-    MaxContextOverflowPlugin 
-} from 'tekimax-ts'
+import type { PluginContext, ChatResult, StreamChunk, TekimaxPlugin } from 'tekimax-omat';
+
+interface TekimaxPlugin {
+  name: string;
+
+  /** Called when the Tekimax client is instantiated */
+  onInit?: (client: any) => void;
+
+  /** Called before each request. Can mutate the context (messages, model, options). */
+  beforeRequest?: (context: PluginContext) => Promise<void | PluginContext>;
+
+  /** Called after a completed (non-streaming) response */
+  afterResponse?: (context: PluginContext, result: ChatResult) => Promise<void>;
+
+  /** Called on every chunk during a streaming response */
+  onStreamChunk?: (context: PluginContext, chunk: StreamChunk) => void;
+
+  /** Called before a tool is executed */
+  beforeToolExecute?: (toolName: string, args: unknown) => Promise<void>;
+
+  /** Called after a tool is executed */
+  afterToolExecute?: (toolName: string, result: unknown) => Promise<void>;
+}
+```
+
+Pass plugins when initializing the client:
+
+```typescript
+import { Tekimax, OpenAIProvider, LoggerPlugin, PIIFilterPlugin, TokenAwareContextPlugin } from 'tekimax-omat';
 
 const client = new Tekimax({
-    provider: new OpenAIProvider({ apiKey: 'sk-...' }),
-    plugins: [
-        new LoggerPlugin(),
-        new PIIFilterPlugin(),
-        new MaxContextOverflowPlugin(15) // Keeps a rolling window of 15 messages max
-    ]
+  provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! }),
+  plugins: [
+    new LoggerPlugin(),
+    new PIIFilterPlugin(),
+    new TokenAwareContextPlugin({ truncationStrategy: 'last_messages' }),
+  ]
+});
+```
+
+---
+
+## LoggerPlugin
+
+Logs requests, responses, stream chunks, tokens, and tool execution boundaries to the console. Useful for development, debugging, and production telemetry integration.
+
+```typescript
+import { LoggerPlugin } from 'tekimax-omat';
+
+new LoggerPlugin()
+// Logs: model, message count, token usage, tool calls, and timing
+```
+
+---
+
+## PIIFilterPlugin
+
+Redacts sensitive patterns from messages **before they leave your application** — so personal data never reaches the AI provider.
+
+Redacts: email addresses, Social Security Numbers (SSNs), phone numbers, and credit card numbers.
+
+```typescript
+import { PIIFilterPlugin } from 'tekimax-omat';
+
+const client = new Tekimax({
+  provider,
+  plugins: [new PIIFilterPlugin()]
+});
+
+// Input: "My SSN is 123-45-6789 and email is jane@example.com"
+// Sent to provider: "My SSN is [REDACTED SSN] and email is [REDACTED EMAIL]"
+```
+
+The plugin handles both string content and multi-part `ContentPart[]` messages (vision requests with mixed text and image parts).
+
+---
+
+## TokenAwareContextPlugin
+
+Token-aware context window management. Trims message history automatically when approaching the model's limit — always preserving the system prompt. Supports 50+ models with a built-in registry and live OpenRouter fallback for any model not in the registry.
+
+```typescript
+import { TokenAwareContextPlugin } from 'tekimax-omat';
+
+new TokenAwareContextPlugin({
+  /**
+   * 'auto'          — trim oldest non-system messages until it fits (default)
+   * 'last_messages' — greedy-skip: preserve as many recent messages as possible
+   * 'disabled'      — no trimming (will error if context exceeds limit)
+   */
+  truncationStrategy: 'last_messages',
+
+  /** Fraction of the context window to use before trimming (default: 0.9) */
+  contextUsageFraction: 0.85,
+
+  /** Tokens to reserve for the model's response (default: 1024) */
+  reserveOutputTokens: 2048,
+
+  /** OpenRouter API key for fetching context windows of unlisted models */
+  openrouterApiKey: process.env.OPENROUTER_API_KEY,
+
+  /**
+   * Stripe metering — off by default.
+   * Enable to meter token usage per customer for billing.
+   */
+  stripeMetering: {
+    enabled: true,
+    secretKey: process.env.STRIPE_SECRET_KEY!,
+    eventName: 'ai_tokens_used',  // Must match your Stripe Billing Meter name
+    getCustomerId: (context) => context.requestOptions?.stripeCustomerId as string,
+  }
 })
+```
+
+The plugin automatically reports `context_window_tokens_used` and `context_window_tokens_remaining` on the `ChatResult.usage` field, following the OpenResponses spec.
+
+---
+
+## AIActionTagPlugin
+
+Attaches an `aiTag` to every `ChatResult` identifying the CRUD operation performed. Supports high-confidence inference from tool call names and low-confidence inference from response text keywords.
+
+Use this to:
+- Mark AI-generated content in your UI (vs human-authored)
+- Build audit logs for compliance and grant reporting
+- Track AI operations in mixed human/AI workflows
+
+```typescript
+import { AIActionTagPlugin } from 'tekimax-omat';
+
+new AIActionTagPlugin({
+  /** Called after every response — use for audit logging */
+  onTag: (tag, context) => {
+    console.log(tag);
+    // {
+    //   source: 'ai',
+    //   operation: 'create',   // 'create' | 'read' | 'update' | 'delete' | 'none'
+    //   confidence: 'high',    // 'high' = from tool name, 'low' = from text
+    //   model: 'gpt-4o',
+    //   timestamp: 1710000000000,
+    //   toolName: 'create_record'  // present only for tool-based inference
+    // }
+  }
+})
+```
+
+The tag is always available on the result even without the plugin (the client infers a basic tag from response content):
+
+```typescript
+const result = await client.text.chat.completions.create({ ... });
+console.log(result.aiTag?.operation); // 'read' | 'create' | 'update' | 'delete' | 'none'
+```
+
+---
+
+## ProvisionPlugin
+
+An endpoint-agnostic REST client with deployment-scoped authentication, rate limiting, and namespace factory. Useful for proxying requests through your own API gateway rather than calling providers directly from the client.
+
+```typescript
+import { ProvisionPlugin, ApiNamespace } from 'tekimax-omat';
+
+const provision = new ProvisionPlugin({
+  apiUrl: 'https://api.yourorg.com',
+  apiKey: process.env.PROVISION_API_KEY!,
+  rateLimit: { requests: 60, windowMs: 60_000 }  // 60 req/min
+});
+
+// Create typed namespace for an endpoint group
+const participants = provision.namespace('/participants');
+
+const profile = await participants.get<ParticipantProfile>('/1024');
+await participants.post('/1024/assessments', { rubricId: 'writing-v2', responseId: 'r-789' });
+```
+
+The plugin validates all outgoing URLs against the configured `apiUrl` host — absolute URL SSRF attempts are rejected at the plugin level.
+
+---
+
+## FairnessAuditPlugin
+
+Collects `(FormativeFeedback, demographics)` pairs across assessments and produces structured equity reports. Flags demographic score disparities at configurable warning and critical thresholds.
+
+This plugin is part of the **OMAT assessment layer**. See the [Assessment Guide](/docs/guides/assessment) for full usage.
+
+```typescript
+import { FairnessAuditPlugin, AssessmentPipeline } from 'tekimax-omat';
+
+const fairnessPlugin = new FairnessAuditPlugin({
+  warningThreshold: 0.10,  // Flag if a group scores 10%+ below overall average
+  criticalThreshold: 0.20, // Critical flag at 20%+ gap
+  minGroupSize: 5,          // Don't report groups smaller than 5 (privacy)
+});
+
+const pipeline = new AssessmentPipeline({
+  provider,
+  rubric: myRubric,
+  model: 'gpt-4o',
+  plugins: [fairnessPlugin],
+});
+
+await pipeline.assessBatch(responses);
+
+const report = fairnessPlugin.getReport();
+console.log(report.disparityFlags);
+// [{ group: 'ELL:beginner', metric: 'score', gap: 0.23, severity: 'critical', ... }]
+```
+
+---
+
+## RubricValidatorPlugin
+
+Validates AI-generated feedback against your rubric after each assessment. Catches missing criteria, out-of-range scores, missing evidence, and missing suggestions.
+
+```typescript
+import { RubricValidatorPlugin } from 'tekimax-omat';
+
+const validator = new RubricValidatorPlugin({
+  rubric: myRubric,
+  strict: false, // true = throw on error; false = warn (default)
+});
+
+// Use directly (unit test context)
+const result = validator.validate(feedback);
+console.log(result.valid);  // boolean
+console.log(result.issues); // [{ field, severity, message }]
+
+// Or attach to pipeline — validates automatically after each assess()
+const pipeline = new AssessmentPipeline({
+  provider, rubric: myRubric, model: 'gpt-4o',
+  plugins: [validator],
+});
+```
+
+---
+
+## LearningProgressionPlugin
+
+Maps each criterion score to a position on a developmental learning progression and annotates the feedback with the current stage, the next milestone, and observable indicators.
+
+Applicable to any domain with a defined developmental continuum — writing development, coding skill levels, clinical competencies, workforce readiness stages, etc.
+
+```typescript
+import { LearningProgressionPlugin } from 'tekimax-omat';
+
+const progressionPlugin = new LearningProgressionPlugin({
+  progressions: {
+    'argument-structure': [
+      {
+        sequence: 1,
+        description: 'States a position',
+        typicalGrade: '2',
+        indicators: ['Uses "I think" or "I believe"', 'No supporting reasons']
+      },
+      {
+        sequence: 2,
+        description: 'Provides one supporting reason',
+        typicalGrade: '3',
+        indicators: ['Single reason given', 'May not elaborate']
+      },
+      {
+        sequence: 3,
+        description: 'Multiple reasons with evidence',
+        typicalGrade: '4',
+        indicators: ['Two or more reasons', 'Cites specific evidence']
+      },
+      {
+        sequence: 4,
+        description: 'Counterargument acknowledged and rebutted',
+        typicalGrade: '5',
+        indicators: ['Names an opposing view', 'Explains why own view is stronger']
+      },
+    ]
+  }
+});
+
+// Annotates feedback.scores[*].progressionStep and .nextMilestone in-place
+progressionPlugin.annotate(feedback);
 ```
 
 ---
 
 ## Building Custom Plugins
 
-Building a custom plugin is as simple as implementing the `TekimaxPlugin` interface. 
-
-You can hook into the exact moment **before a request is sent**, **after a response arrives**, **during every stream chunk**, or **around tool executions**.
-
-### The `TekimaxPlugin` Interface
-
 ```typescript
-import type { PluginContext, ChatResult, StreamChunk, TekimaxPlugin } from 'tekimax-ts'
+import type { TekimaxPlugin, PluginContext, ChatResult } from 'tekimax-omat';
 
-export interface TekimaxPlugin {
-    name: string
-
-    /** Triggered when the Tekimax client is instantiated */
-    onInit?: (client: any) => void
-
-    /** Triggered before a chat or stream request is sent. Can mutate the context. */
-    beforeRequest?: (context: PluginContext) => Promise<void | PluginContext>
-
-    /** Triggered after a fully completed standard chat response */
-    afterResponse?: (context: PluginContext, result: ChatResult) => Promise<void>
-
-    /** Triggered on every chunk during a streaming response */
-    onStreamChunk?: (context: PluginContext, chunk: StreamChunk) => void
-
-    /** Triggered before a tool is executed */
-    beforeToolExecute?: (toolName: string, args: unknown) => Promise<void>
-
-    /** Triggered after a tool is executed */
-    afterToolExecute?: (toolName: string, result: unknown) => Promise<void>
-}
-```
-
-### Example: Custom Langfuse Logger
-
-Here is an example of how you might integrate a third-party observability platform like Langfuse using the plugin architecture:
-
-```typescript
 export class LangfusePlugin implements TekimaxPlugin {
-    name = 'LangfusePlugin'
-    private langfuse = new Langfuse(...)
+  name = 'LangfusePlugin';
+  private langfuse = new Langfuse({ /* ... */ });
 
-    async beforeRequest(context: PluginContext) {
-        // Start a Langfuse observation trace
-        this.langfuse.trace({
-            name: "Chat Generation",
-            model: context.model,
-            input: context.messages
-        })
-    }
+  async beforeRequest(context: PluginContext) {
+    this.langfuse.trace({
+      name: 'Chat Generation',
+      model: context.model,
+      input: context.messages,
+    });
+  }
 
-    async afterResponse(context: PluginContext, result: ChatResult) {
-        // Log the completion and token usage
-        this.langfuse.generation({
-            output: result.message.content,
-            usage: result.usage
-        })
-    }
+  async afterResponse(context: PluginContext, result: ChatResult) {
+    this.langfuse.generation({
+      output: result.message.content,
+      usage: result.usage,
+    });
+  }
 }
 ```

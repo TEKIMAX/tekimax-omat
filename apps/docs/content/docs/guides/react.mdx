@@ -1,55 +1,63 @@
 ---
 title: React Integration
-description: Build AI chat interfaces with Tekimax and React.
+description: useChat for chat interfaces and useAssessment for formative feedback UIs.
 ---
 
-The Tekimax SDK includes a dedicated React hook, `useChat`, which manages message state, streaming, tool execution, and abort handling for chat interfaces.
+The SDK ships two React hooks from `tekimax-omat/react`:
+
+- **`useChat`** — streaming chat interface with tool loops, abort, and optimistic updates
+- **`useAssessment`** — rubric-grounded formative feedback with streaming and history
+
+---
 
 ## Installation
 
 ```bash
-npm install tekimax-ts react
+npm install tekimax-omat react
 ```
 
-## Setup
+## `useChat`
 
-Initialize the provider outside your component (or memoize it) to avoid re-creating the SDK client on every render.
+Manages message state, streaming, tool execution, and abort handling for chat interfaces.
+
+### Setup
+
+Initialize the provider outside your component (or memoize) to avoid re-creating the client on every render.
 
 ```typescript
-import { Tekimax, OpenAIProvider } from 'tekimax-ts';
+import { Tekimax, OpenAIProvider } from 'tekimax-omat';
 
 const provider = new OpenAIProvider({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY!,
-  // The OpenAI SDK blocks browser usage by default to prevent key exposure.
-  // Set this for prototyping; in production, proxy through your backend.
-  dangerouslyAllowBrowser: true
+  // Required for browser usage. In production, proxy through your backend.
+  dangerouslyAllowBrowser: true,
 });
 
 const client = new Tekimax({ provider });
 ```
 
-> **Security Note**: In production, you should proxy requests through your backend rather than exposing API keys in the client.
+> **Security:** In production, proxy AI requests through your backend. Never expose secret API keys in client-side code.
 
-## Using `useChat`
-
-The `useChat` hook manages the message list, input state, loading status, and streaming automatically.
+### Basic Chat UI
 
 ```tsx
-import { useChat } from 'tekimax-ts/react';
+import { useChat } from 'tekimax-omat/react';
 
 export function ChatComponent() {
   const {
-    messages,          // Array of Message objects
-    setMessages,       // Override message history (e.g., for "clear chat")
+    messages,          // Message[] — full conversation history
     input,             // Current input string
-    handleInputChange, // Change handler for <input> or <textarea>
-    handleSubmit,      // Submit handler for <form>
-    append,            // Programmatically add a message and trigger a response
-    isLoading,         // Boolean — true while streaming
-    stop               // Abort the current request
+    handleInputChange, // onChange handler for <input> / <textarea>
+    handleSubmit,      // onSubmit handler for <form>
+    append,            // Programmatically add a message
+    isLoading,         // true while streaming
+    stop,              // Abort the current request
+    setMessages,       // Override message history (e.g. clear chat)
   } = useChat({
-    client: client,    // Pass the Tekimax client instance
-    model: 'gpt-4o'
+    client,
+    model: 'gpt-4o',
+    onFinish: (message) => console.log('Done:', message.content),
+    onError: (error) => console.error('Chat error:', error),
   });
 
   return (
@@ -57,10 +65,10 @@ export function ChatComponent() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((m, i) => (
           <div key={i} className={`p-4 rounded-lg ${
-            m.role === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
+            m.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%]' : 'bg-gray-100 max-w-[80%]'
           }`}>
-            <strong>{m.role === 'user' ? 'You' : 'AI'}:</strong>
-            <p className="whitespace-pre-wrap">{m.content}</p>
+            <strong className="text-sm text-gray-500">{m.role === 'user' ? 'You' : 'AI'}</strong>
+            <p className="whitespace-pre-wrap mt-1">{m.content as string}</p>
           </div>
         ))}
       </div>
@@ -70,14 +78,10 @@ export function ChatComponent() {
           className="flex-1 p-2 border rounded"
           value={input}
           onChange={handleInputChange}
-          placeholder="Say something..."
+          placeholder="Ask something…"
           disabled={isLoading}
         />
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
+        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white rounded">
           Send
         </button>
         {isLoading && (
@@ -91,86 +95,174 @@ export function ChatComponent() {
 }
 ```
 
-## Programmatic Messages with `append`
-
-Use `append` to add a message without a form — useful for "suggested prompts" or system-triggered messages.
+### Programmatic Messages with `append`
 
 ```typescript
-// Pass a string (auto-wrapped as a user message)
-await append('What is the weather today?');
+// String shorthand — auto-wrapped as user message
+await append('What job training programs do you offer?');
 
-// Or pass a full Message object
-await append({ role: 'user', content: 'Hello!' });
+// Full Message object
+await append({ role: 'user', content: 'I have a background in food service' });
 ```
 
-## Automatic Tool Execution
-
-The `useChat` hook supports **automatic tool calling loops**. Define tools as a `Record<string, Tool>` — when the model returns tool calls, the hook executes them, appends the results, and re-sends to the model in a loop until the model responds with text.
+### Tool Calling
 
 ```tsx
-import { useChat } from 'tekimax-ts/react';
-
 const { messages, handleSubmit, input, handleInputChange, isLoading } = useChat({
-  client: client,
+  client,
   model: 'gpt-4o',
   tools: {
-    get_weather: {
+    search_programs: {
       type: 'function',
       function: {
-        name: 'get_weather',
-        description: 'Get current weather for a location',
+        name: 'search_programs',
+        description: 'Search available training programs by criteria',
         parameters: {
           type: 'object',
-          properties: { location: { type: 'string' } },
-          required: ['location']
+          properties: {
+            category: { type: 'string', description: 'e.g. technology, healthcare, trades' },
+            city: { type: 'string' },
+            costLimit: { type: 'number', description: 'Max cost in USD' },
+          },
+          required: ['category']
         }
       },
-      // The execute function runs on the client. Return whatever
-      // you want the model to see as the tool result.
-      execute: async ({ location }) => {
-        const res = await fetch(`/api/weather?q=${location}`);
+      execute: async ({ category, city, costLimit }) => {
+        const res = await fetch(`/api/programs?category=${category}&city=${city ?? ''}`);
         return res.json();
       }
     }
   },
-  onFinish: (message) => console.log('Done:', message.content),
-  onError: (error) => console.error('Chat error:', error)
 });
 ```
 
-## Reasoning (Thinking)
+When the model returns tool calls, the hook executes them, appends results, and re-sends — all automatically.
 
-Enable reasoning capture for compatible models:
+### Reasoning Models
 
 ```typescript
 const { messages } = useChat({
-  client: client,
+  client,
   model: 'deepseek-r1',
-  think: true  // Enables reasoning capture during streaming
+  think: true, // Capture chain-of-thought during streaming
 });
 
-// Access thinking data from the message
+// Access reasoning separately from the final answer
 messages.forEach(m => {
   if (m.thinking) console.log('Reasoning:', m.thinking);
+  console.log('Answer:', m.content);
 });
 ```
 
-## `adapter` vs `client`
-
-The hook accepts either a `client` (Tekimax instance) or a raw `adapter` (AIProvider). Both work — `client` is preferred because it gives you access to all namespaces, while `adapter` is useful if you're integrating with a custom provider that doesn't use the Tekimax wrapper.
+### Provider Options
 
 ```typescript
-// Option A: Tekimax client (recommended)
+// Option A: Tekimax client (recommended — full namespace access)
 useChat({ client: new Tekimax({ provider }), model: 'gpt-4o' });
 
-// Option B: Raw adapter (advanced)
+// Option B: Raw provider (advanced — custom providers without Tekimax wrapper)
 useChat({ adapter: provider, model: 'gpt-4o' });
 ```
 
-## Features
+---
 
-- **Streaming**: Automatically accumulates streamed response deltas.
-- **Optimistic Updates**: Adds user message to the UI immediately, before the API responds.
-- **Race Condition Handling**: Ignores stale requests if a new one is sent.
-- **Tool Loops**: Automatically executes tools and re-sends results in a loop.
-- **Abort Support**: The `stop()` function cancels the in-flight request via `AbortController`.
+## `useAssessment`
+
+Wraps `AssessmentPipeline` with React state, streaming support, and abort handling. For full OMAT setup (rubric design, pipeline config, plugins), see the [Assessment Guide](/docs/guides/assessment).
+
+```tsx
+import { useState } from 'react';
+import { useAssessment } from 'tekimax-omat/react';
+import { AssessmentPipeline, OpenAIProvider } from 'tekimax-omat';
+
+const pipeline = new AssessmentPipeline({
+  provider: new OpenAIProvider({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY!,
+    dangerouslyAllowBrowser: true,
+  }),
+  rubric: myRubric,
+  model: 'gpt-4o',
+});
+
+export function AssessmentWidget() {
+  const [text, setText] = useState('');
+
+  const { feedback, isAssessing, streamedText, history, assess, stop, reset } = useAssessment({
+    pipeline,
+    streaming: false, // true = real-time text stream; false = structured feedback on completion
+    onFeedback: (f) => console.log('Score:', f.normalizedScore),
+    onError: (e) => console.error(e),
+  });
+
+  const handleSubmit = () => {
+    assess({ id: crypto.randomUUID(), modality: 'text', text });
+  };
+
+  return (
+    <div>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Enter your response…"
+        rows={8}
+      />
+
+      <div className="flex gap-2 mt-2">
+        <button onClick={handleSubmit} disabled={isAssessing || !text.trim()}>
+          {isAssessing ? 'Assessing…' : 'Get Feedback'}
+        </button>
+        {isAssessing && <button onClick={stop}>Stop</button>}
+        {history.length > 0 && <button onClick={reset}>Reset</button>}
+      </div>
+
+      {feedback && (
+        <div className="mt-4 space-y-4">
+          <div className="p-4 bg-blue-50 rounded">
+            <p className="font-medium">{feedback.overall}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              Score: {(feedback.normalizedScore * 100).toFixed(0)}%
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-1">What's working</h4>
+            <ul className="list-disc list-inside text-sm space-y-1">
+              {feedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-1">Next steps</h4>
+            <ul className="list-disc list-inside text-sm space-y-1">
+              {feedback.nextSteps.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </div>
+
+          <p className="text-sm italic text-blue-700">{feedback.encouragement}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### `useAssessment` Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `pipeline` | `AssessmentPipeline` | required | Configured pipeline instance |
+| `streaming` | `boolean` | `false` | Stream text chunks in real-time |
+| `onFeedback` | `(f: FormativeFeedback) => void` | — | Called when feedback is complete |
+| `onError` | `(e: Error) => void` | — | Called on error |
+
+### `useAssessment` Return Values
+
+| Value | Type | Description |
+|---|---|---|
+| `feedback` | `FormativeFeedback \| null` | Latest complete feedback |
+| `isAssessing` | `boolean` | True while in flight |
+| `streamedText` | `string` | Accumulated stream (streaming mode only) |
+| `history` | `FormativeFeedback[]` | All feedback this session |
+| `assess(response)` | `(StudentResponse) => Promise<void>` | Submit a response |
+| `stop()` | `() => void` | Cancel in-flight request |
+| `reset()` | `() => void` | Clear all state |

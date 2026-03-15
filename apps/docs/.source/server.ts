@@ -1,15 +1,17 @@
 // @ts-nocheck
-import * as __fd_glob_25 from "../content/docs/guides/thinking.mdx?collection=docs"
-import * as __fd_glob_24 from "../content/docs/guides/structured-output.mdx?collection=docs"
-import * as __fd_glob_23 from "../content/docs/guides/retry.mdx?collection=docs"
-import * as __fd_glob_22 from "../content/docs/guides/redis.mdx?collection=docs"
-import * as __fd_glob_21 from "../content/docs/guides/react.mdx?collection=docs"
-import * as __fd_glob_20 from "../content/docs/guides/provision-plugin.mdx?collection=docs"
-import * as __fd_glob_19 from "../content/docs/guides/multi-modal-workflows.mdx?collection=docs"
-import * as __fd_glob_18 from "../content/docs/guides/middleware.mdx?collection=docs"
-import * as __fd_glob_17 from "../content/docs/guides/fallback.mdx?collection=docs"
-import * as __fd_glob_16 from "../content/docs/guides/embeddings.mdx?collection=docs"
-import * as __fd_glob_15 from "../content/docs/guides/cost-tracking.mdx?collection=docs"
+import * as __fd_glob_27 from "../content/docs/guides/thinking.mdx?collection=docs"
+import * as __fd_glob_26 from "../content/docs/guides/structured-output.mdx?collection=docs"
+import * as __fd_glob_25 from "../content/docs/guides/retry.mdx?collection=docs"
+import * as __fd_glob_24 from "../content/docs/guides/redis.mdx?collection=docs"
+import * as __fd_glob_23 from "../content/docs/guides/react.mdx?collection=docs"
+import * as __fd_glob_22 from "../content/docs/guides/provision-plugin.mdx?collection=docs"
+import * as __fd_glob_21 from "../content/docs/guides/multi-modal-workflows.mdx?collection=docs"
+import * as __fd_glob_20 from "../content/docs/guides/middleware.mdx?collection=docs"
+import * as __fd_glob_19 from "../content/docs/guides/fallback.mdx?collection=docs"
+import * as __fd_glob_18 from "../content/docs/guides/embeddings.mdx?collection=docs"
+import * as __fd_glob_17 from "../content/docs/guides/cost-tracking.mdx?collection=docs"
+import * as __fd_glob_16 from "../content/docs/guides/assessment.mdx?collection=docs"
+import * as __fd_glob_15 from "../content/docs/guides/api-skills.mdx?collection=docs"
 import * as __fd_glob_14 from "../content/docs/adapters/openrouter.mdx?collection=docs"
 import * as __fd_glob_13 from "../content/docs/adapters/openai.mdx?collection=docs"
 import * as __fd_glob_12 from "../content/docs/adapters/ollama.mdx?collection=docs"
@@ -33,4 +35,4 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, "guides/meta.json": __fd_glob_1, }, {"changelog.mdx": __fd_glob_2, "core.mdx": __fd_glob_3, "error-handling.mdx": __fd_glob_4, "index.mdx": __fd_glob_5, "modalities.mdx": __fd_glob_6, "plugins.mdx": __fd_glob_7, "security.mdx": __fd_glob_8, "adapters/anthropic.mdx": __fd_glob_9, "adapters/gemini.mdx": __fd_glob_10, "adapters/grok.mdx": __fd_glob_11, "adapters/ollama.mdx": __fd_glob_12, "adapters/openai.mdx": __fd_glob_13, "adapters/openrouter.mdx": __fd_glob_14, "guides/cost-tracking.mdx": __fd_glob_15, "guides/embeddings.mdx": __fd_glob_16, "guides/fallback.mdx": __fd_glob_17, "guides/middleware.mdx": __fd_glob_18, "guides/multi-modal-workflows.mdx": __fd_glob_19, "guides/provision-plugin.mdx": __fd_glob_20, "guides/react.mdx": __fd_glob_21, "guides/redis.mdx": __fd_glob_22, "guides/retry.mdx": __fd_glob_23, "guides/structured-output.mdx": __fd_glob_24, "guides/thinking.mdx": __fd_glob_25, });
+export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, "guides/meta.json": __fd_glob_1, }, {"changelog.mdx": __fd_glob_2, "core.mdx": __fd_glob_3, "error-handling.mdx": __fd_glob_4, "index.mdx": __fd_glob_5, "modalities.mdx": __fd_glob_6, "plugins.mdx": __fd_glob_7, "security.mdx": __fd_glob_8, "adapters/anthropic.mdx": __fd_glob_9, "adapters/gemini.mdx": __fd_glob_10, "adapters/grok.mdx": __fd_glob_11, "adapters/ollama.mdx": __fd_glob_12, "adapters/openai.mdx": __fd_glob_13, "adapters/openrouter.mdx": __fd_glob_14, "guides/api-skills.mdx": __fd_glob_15, "guides/assessment.mdx": __fd_glob_16, "guides/cost-tracking.mdx": __fd_glob_17, "guides/embeddings.mdx": __fd_glob_18, "guides/fallback.mdx": __fd_glob_19, "guides/middleware.mdx": __fd_glob_20, "guides/multi-modal-workflows.mdx": __fd_glob_21, "guides/provision-plugin.mdx": __fd_glob_22, "guides/react.mdx": __fd_glob_23, "guides/redis.mdx": __fd_glob_24, "guides/retry.mdx": __fd_glob_25, "guides/structured-output.mdx": __fd_glob_26, "guides/thinking.mdx": __fd_glob_27, });

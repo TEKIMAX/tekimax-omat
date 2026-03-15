@@ -23,10 +23,10 @@
         "noFallthroughCasesInSwitch": true,
         /* Paths */
         "paths": {
-            "tekimax-ts": [
+            "tekimax-omat": [
                 "../tekimax-ts/src"
             ],
-            "tekimax-ts/*": [
+            "tekimax-omat/*": [
                 "../tekimax-ts/src/*"
             ]
         }

@@ -28,7 +28,7 @@ import {
   RateLimiter,
   TokenBudget,
   SessionStore,
-} from 'tekimax-ts'
+} from 'tekimax-omat'
 
 const redis = new Redis(process.env.REDIS_URL)
 ```
@@ -42,7 +42,7 @@ Cache identical `chat()` calls to avoid paying for repeated API requests. The ca
 **Cost savings: 50–80% on repeated queries.**
 
 ```ts
-import { Tekimax, OpenAIProvider, ResponseCache } from 'tekimax-ts'
+import { Tekimax, OpenAIProvider, ResponseCache } from 'tekimax-omat'
 import Redis from 'ioredis'
 
 const redis = new Redis(process.env.REDIS_URL)
@@ -230,7 +230,7 @@ import {
   RateLimiter,
   TokenBudget,
   SessionStore,
-} from 'tekimax-ts'
+} from 'tekimax-omat'
 
 const redis = new Redis(process.env.REDIS_URL)
 

@@ -12,7 +12,7 @@ One of Tekimax's strengths is the ability to combine different modalities using 
 Generate an image based on a detailed description created by an LLM.
 
 ```typescript
-import { Tekimax, OpenAIProvider } from 'tekimax-ts';
+import { Tekimax, OpenAIProvider } from 'tekimax-omat';
 
 const client = new Tekimax({ provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! }) });
 
@@ -89,7 +89,7 @@ console.log(`Generated ${audio.buffer.byteLength} bytes of audio.`);
 Combine Gemini's video understanding with GPT-4o for a two-stage analysis.
 
 ```typescript
-import { Tekimax, GeminiProvider, OpenAIProvider } from 'tekimax-ts';
+import { Tekimax, GeminiProvider, OpenAIProvider } from 'tekimax-omat';
 
 // Use Gemini for video analysis (it's the only provider with native video support)
 const geminiClient = new Tekimax({

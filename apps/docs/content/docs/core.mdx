@@ -1,32 +1,33 @@
 ---
 title: Core Concepts
-description: Understanding the Tekimax Client and Provider architecture.
+description: The Tekimax client, providers, streaming, multi-turn conversations, and agentic loops.
 ---
 
 # Core Concepts
 
-The Tekimax SDK is built around two main primitives: the `Tekimax` client and the `AIProvider` interface.
+The SDK is built around two primitives: the `Tekimax` client and the `AIProvider` interface.
 
 ## The Client
 
-The `Tekimax` client is the unified entry point. It organizes capabilities into **Namespaces** — one per modality — so that auto-complete guides you to the right method without memorizing the API surface.
+The `Tekimax` client is the unified entry point. It organizes capabilities into **namespaces** — one per modality — so auto-complete guides you to the right method without memorizing the API surface.
 
 ```typescript
-const client = new Tekimax({ provider });
+import { Tekimax, OpenAIProvider } from 'tekimax-omat';
 
-// Namespaces
-client.text   // Chat, Completions, Embeddings
-client.images // Generation, Editing, Analysis (Vision)
-client.audio  // Text-to-Speech (TTS), Transcription (STT)
-client.videos // Generation, Analysis
+const client = new Tekimax({ provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! }) });
+
+client.text    // Chat, completions, embeddings
+client.images  // Image generation and vision analysis
+client.audio   // Text-to-speech and transcription
+client.videos  // Video analysis (Gemini)
 ```
 
-### Text (Chat)
+## Chat (Text)
 
-The `client.text` namespace provides two equivalent interfaces. Use whichever reads better in your codebase.
+Two equivalent calling styles — use whichever reads better in your codebase:
 
 ```typescript
-// OpenAI-style dot-chain (aliases to the same method internally)
+// OpenAI-style dot-chain
 const response = await client.text.chat.completions.create({
   model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Hello!' }]
@@ -38,52 +39,43 @@ const response = await client.text.generate({
   messages: [{ role: 'user', content: 'Hello!' }]
 });
 
-// Both return ChatResult — no choices array.
+// Both return ChatResult with a flat shape — no choices array.
 console.log(response.message.content);
+console.log(response.usage?.totalTokens);
 ```
 
 ## Providers
 
-Providers act as translation layers. They convert strict Tekimax types into the specific format required by the upstream API (e.g., OpenAI, Anthropic) and normalize the response back.
-
-All providers implement the `AIProvider` interface. The base `AIProvider` is strictly scoped to text chat. Instead of having messy optional methods for other modalities, Tekimax uses **Capability Interfaces** (like `VisionCapability` or `ImageGenerationCapability`). Providers explicitly implement these interfaces to opt into specific modalities.
+Providers translate the SDK's unified types to each upstream API format and normalize responses back. All implement the `AIProvider` interface. Additional capabilities (vision, image generation, transcription) use **Capability Interfaces** — providers explicitly opt in.
 
 ```typescript
-// The base provider is scoped strictly to text chat.
-export interface AIProvider {
+// Base provider — text chat only
+interface AIProvider {
   name: string;
   chat: (options: ChatOptions) => Promise<ChatResult>;
   chatStream: (options: ChatOptions) => AsyncIterable<StreamChunk>;
 }
 
-// Providers selectively implement capability interfaces.
-export interface VisionCapability {
+// Providers opt into additional capabilities
+interface VisionCapability {
   analyzeImage: (options: ImageAnalysisOptions) => Promise<ImageAnalysisResult>;
 }
 
-export interface ImageGenerationCapability {
-  generateImage: (options: ImageGenerationOptions) => Promise<ImageResult>;
-}
-
-// Example: OpenAIProvider implements almost everything.
-export class OpenAIProvider implements AIProvider, VisionCapability, ImageGenerationCapability {
-  // ...
+interface TranscriptionCapability {
+  transcribeAudio: (options: TranscriptionOptions) => Promise<TranscriptionResult>;
 }
 ```
 
-Because the `Tekimax` client namespaces use TypeScript generics (`client.images`), calling `.images.generate()` on a provider that lacks the `ImageGenerationCapability` will throw a **compile-time error**, giving you instant feedback in your IDE.
+Calling `.images.generate()` on a text-only provider throws a **compile-time TypeScript error** — no runtime surprises.
 
 ## Streaming
 
-Streaming uses a **separate method** (`createStream` / `generateStream`) rather than a `stream: true` flag. This lets TypeScript infer the correct return type at the call site — `ChatResult` for non-streaming, `AsyncGenerator<StreamChunk>` for streaming — without union-type gymnastics.
+Streaming uses a dedicated method rather than a `stream: true` flag. TypeScript infers the return type correctly at the call site.
 
 ```typescript
-// createStream returns an AsyncGenerator directly — no await needed.
 const stream = client.text.chat.completions.createStream({
   model: 'gpt-4o',
-  messages: [
-    { role: 'user', content: 'Tell me a story' }
-  ],
+  messages: [{ role: 'user', content: 'Tell me a story' }],
 });
 
 for await (const chunk of stream) {
@@ -91,101 +83,212 @@ for await (const chunk of stream) {
 }
 ```
 
-## React Hooks
+## Multi-Turn Conversations
 
-If you are using React, we provide built-in hooks for instant integration.
+The `Conversation` class maintains message history automatically. Each `send()` call appends the user message, gets the assistant response, appends that too, and returns — so the next call has full context.
 
 ```typescript
-import { useChat } from 'tekimax-ts/react';
+import { Conversation, OpenAIProvider } from 'tekimax-omat';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
+
+const convo = new Conversation(provider, {
+  model: 'gpt-4o',
+  system: 'You are a helpful intake coordinator for a nonprofit job training program.',
+});
+
+const r1 = await convo.send('I want to learn software development');
+console.log(r1.message.content); // Asks about background, goals, etc.
+
+const r2 = await convo.send('I have no prior experience but I can commit 20 hours a week');
+console.log(r2.message.content); // Tailored program recommendations
+
+console.log(convo.turnCount); // 2
+console.log(convo.history);   // All messages including system prompt
 ```
 
-See the [React Integration](/docs/guides/react) guide for more details.
+### Conversation Methods
 
-## Universal Features
+```typescript
+// Send a message (auto-appends to history)
+const result = await convo.send('What programs do you offer?');
 
-The SDK normalizes advanced features across all providers (OpenAI, Anthropic, Gemini, Ollama, Grok, OpenRouter), ensuring a consistent API experience.
+// Stream a response (chunks assembled into history after completion)
+for await (const chunk of convo.stream('Tell me more about the web track')) {
+  process.stdout.write(chunk.delta);
+}
 
-### Reasoning (Thinking)
+// Inject a message without a model call (seed context or replay history)
+convo.inject({ role: 'assistant', content: 'Previous session summary...' });
 
-Support for "Thinking" models (like DeepSeek R1) is built-in. Use the `think: true` parameter to capture reasoning traces.
+// Export and restore (persist to database, reload later)
+const snapshot = convo.export(); // Message[]
+await db.save(userId, snapshot);
+
+const restored = new Conversation(provider, { model: 'gpt-4o' });
+restored.restore(await db.load(userId));
+
+// Clear history (system prompt is kept)
+convo.clear();
+```
+
+## Tool Calling
+
+Tool definitions use the OpenAI function-calling schema. The SDK normalizes to each provider's format internally (Gemini's `functionDeclarations`, Anthropic's `tool_use` blocks, etc.).
 
 ```typescript
 const response = await client.text.chat.completions.create({
-  model: 'deepseek-r1',
-  messages: [{ role: 'user', content: 'Solve this logic puzzle...' }],
-  think: true // Enable reasoning capture
-});
-
-// The thinking field captures the model's chain-of-thought separately
-// from the final answer, so you can display reasoning in a collapsible UI.
-console.log(response.message.thinking); // Reasoning trace
-console.log(response.message.content);  // Final answer
-```
-
-See the [Reasoning Models](/docs/guides/thinking) guide for more details.
-
-### Tool Calling
-
-Tool calling is standardized. You define tools once using the OpenAI function-calling schema, and the SDK handles the specific format for each provider (e.g., mapping to Gemini's `functionDeclarations` or Anthropic's `tool_use` content blocks).
-
-```typescript
-const client = new Tekimax({
-  provider: new GeminiProvider({ apiKey: process.env.GOOGLE_API_KEY! })
-});
-
-const response = await client.text.chat.completions.create({
-  model: 'gemini-1.5-pro',
-  messages: [{ role: 'user', content: 'What is the weather in Tokyo?' }],
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Check eligibility for the summer youth program' }],
   tools: [{
     type: 'function',
     function: {
-      name: 'get_weather',
-      description: 'Get current weather',
+      name: 'check_eligibility',
+      description: 'Check if a participant meets program eligibility requirements',
       parameters: {
         type: 'object',
-        properties: { location: { type: 'string' } },
-        required: ['location']
+        properties: {
+          age: { type: 'number' },
+          zipCode: { type: 'string' },
+          householdIncome: { type: 'number' }
+        },
+        required: ['age', 'zipCode']
       }
     }
   }]
 });
 
-// Uniform access — same shape regardless of provider.
-// Anthropic returns tool_use blocks, Gemini returns functionCall parts,
-// but Tekimax normalizes them all to this structure.
+// Uniform tool call shape — same regardless of provider
 const toolCalls = response.message.toolCalls;
 if (toolCalls) {
-  console.log(toolCalls[0].function.name); // "get_weather"
-  console.log(toolCalls[0].function.arguments); // '{"location":"Tokyo"}'
+  console.log(toolCalls[0].function.name);      // "check_eligibility"
+  console.log(toolCalls[0].function.arguments); // '{"age":17,"zipCode":"94103"}'
 }
 ```
 
-### Agentic Loops with `generateText`
+## Agentic Loops with `generateText`
 
-For multi-step tool-calling workflows, the SDK provides a `generateText` utility that handles the tool execution loop for you.
+For multi-step tool-calling workflows, `generateText` handles the tool execution loop automatically.
 
 ```typescript
-import { generateText } from 'tekimax-ts';
+import { generateText, OpenAIProvider } from 'tekimax-omat';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
 
 const result = await generateText({
   adapter: provider,
   model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'What is the weather in Tokyo?' }],
+  messages: [{ role: 'user', content: 'Find available job training programs for veterans in Oakland' }],
   tools: {
-    get_weather: {
+    search_programs: {
       type: 'function',
       function: {
-        name: 'get_weather',
-        description: 'Get current weather',
-        parameters: { type: 'object', properties: { location: { type: 'string' } } }
+        name: 'search_programs',
+        description: 'Search for programs matching criteria',
+        parameters: {
+          type: 'object',
+          properties: {
+            population: { type: 'string' },
+            city: { type: 'string' },
+            category: { type: 'string' }
+          }
+        }
       },
-      execute: async ({ location }) => ({ temp: 22, unit: 'C', location })
+      execute: async ({ population, city, category }) => {
+        return await db.searchPrograms({ population, city, category });
+      }
     }
   },
-  // maxSteps controls how many chat round-trips the agent can take.
-  // This prevents runaway loops — the default is 1 (no looping).
-  maxSteps: 5
+  maxSteps: 5  // Prevents runaway loops — default is 1
 });
 
-console.log(result.text); // Final answer after tool execution
+console.log(result.text);  // Final answer after tool execution
+console.log(result.aiTag); // { source: 'ai', operation: 'read', confidence: 'high', ... }
 ```
+
+## AI Action Tagging
+
+Every `ChatResult` and `GenerateTextResult` includes an `aiTag` field that identifies what kind of operation the AI performed. Use this to distinguish AI-generated content from human content and to log CRUD operations for audit trails.
+
+```typescript
+const result = await client.text.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Create a new case file for participant #1024' }]
+});
+
+console.log(result.aiTag);
+// {
+//   source: 'ai',
+//   operation: 'create',   // 'create' | 'read' | 'update' | 'delete' | 'none'
+//   confidence: 'low',     // 'high' (from tool name) | 'low' (inferred from text)
+//   model: 'gpt-4o',
+//   timestamp: 1710000000000
+// }
+```
+
+Add the `AIActionTagPlugin` to get audit callbacks and high-confidence tagging via tool call names:
+
+```typescript
+import { AIActionTagPlugin } from 'tekimax-omat';
+
+const client = new Tekimax({
+  provider,
+  plugins: [
+    new AIActionTagPlugin({
+      onTag: (tag, context) => {
+        auditLog.record({
+          operation: tag.operation,
+          model: tag.model,
+          userId: context.requestOptions?.userId,
+          timestamp: tag.timestamp,
+        });
+      }
+    })
+  ]
+});
+```
+
+## Reasoning Models
+
+Capture chain-of-thought reasoning from models like DeepSeek R1, Claude extended thinking, or o1.
+
+```typescript
+const response = await client.text.chat.completions.create({
+  model: 'deepseek-r1',
+  messages: [{ role: 'user', content: 'Should we expand the after-school program to two locations?' }],
+  think: true
+});
+
+console.log(response.message.thinking); // Reasoning trace (collapsible in UI)
+console.log(response.message.content);  // Final recommendation
+```
+
+## Model Context Window Management
+
+The SDK knows the context window for 50+ models. `TokenAwareContextPlugin` automatically trims history when approaching the limit — always preserving the system prompt.
+
+```typescript
+import { TokenAwareContextPlugin } from 'tekimax-omat';
+
+const client = new Tekimax({
+  provider,
+  plugins: [
+    new TokenAwareContextPlugin({
+      truncationStrategy: 'last_messages', // Keep most recent context
+      contextUsageFraction: 0.85,          // Use up to 85% of the context window
+      reserveOutputTokens: 2048,           // Reserve space for the response
+    })
+  ]
+});
+```
+
+The plugin auto-detects context windows from a built-in registry (GPT-4o: 128K, Claude: 200K, Gemini 1.5 Pro: 1M, etc.) and falls back to a live OpenRouter API lookup for models not in the registry.
+
+## React Hooks
+
+```typescript
+import { useChat } from 'tekimax-omat/react';
+import { useAssessment } from 'tekimax-omat/react';
+```
+
+See the [React Integration](/docs/guides/react) guide and [OMAT Assessment](/docs/guides/assessment) guide for full usage.

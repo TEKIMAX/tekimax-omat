@@ -1,18 +1,19 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TEKIMAX/tekimax-omat/main/apps/docs/public/tekimax-logo.png" alt="TEKIMAX OMAT" width="120" />
   <h1>tekimax-omat</h1>
-  <p><strong>Human-Centered AI Infrastructure</strong></p>
-  
+  <p><strong>Open AI Infrastructure for the Public Good</strong></p>
+
   <p>
     <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
     <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0-3178C6.svg" alt="TypeScript"></a>
+    <a href="https://www.npmjs.com/package/tekimax-omat"><img src="https://img.shields.io/npm/v/tekimax-omat.svg" alt="NPM Version"></a>
+    <a href="https://packagephobia.com/result?p=tekimax-omat"><img src="https://packagephobia.com/badge?p=tekimax-omat" alt="Bundle Size"></a>
+    <a href="https://github.com/TEKIMAX/tekimax-omat/actions/workflows/security-scan.yml"><img src="https://github.com/TEKIMAX/tekimax-omat/actions/workflows/security-scan.yml/badge.svg" alt="Security Scan"></a>
     <a href="https://tekimax.com"><img src="https://img.shields.io/badge/TEKIMAX-Open%20Source-000000.svg" alt="TEKIMAX"></a>
-    <a href="https://www.npmjs.com/package/tekimax-ts"><img src="https://img.shields.io/npm/v/tekimax-ts.svg" alt="NPM Version"></a>
-    <a href="https://packagephobia.com/result?p=tekimax-ts"><img src="https://packagephobia.com/badge?p=tekimax-ts" alt="Bundle Size"></a>
   </p>
-  
+
   <p>
-    A unified, type-safe SDK for integrating <strong>84+ AI providers</strong> and <strong>2,300+ models</strong> — including <strong>OpenAI</strong>, <strong>Anthropic</strong>, <strong>Gemini</strong>, <strong>Ollama</strong>, <strong>Grok</strong>, and <strong>OpenRouter</strong> — with full multimodal support for text, images, audio, and video.
+    A unified, type-safe AI SDK built for organizations doing public good — nonprofits, healthcare, education, workforce development, and civic tech. One interface for <strong>84+ AI providers</strong> and <strong>2,300+ models</strong>, with a full assessment toolkit, privacy-first design, and enterprise-grade security baked in.
   </p>
 
   <div>
@@ -27,286 +28,357 @@
 
 ---
 
-## 🌍 OMAT — Open Multimodal Assessment Toolkit
+## Quick Install
 
-**tekimax-omat** is the **Open Multimodal Assessment Toolkit (OMAT)** — an open-source framework enabling K-12 edtech developers to build, evaluate, and improve AI-powered formative assessments using multimodal student inputs: text, speech, drawing, and structured responses.
-
-OMAT provides three interrelated public goods:
-
-| Component | Description | License |
-|-----------|-------------|---------|
-| **Assessment Pipeline SDK** | Configurable rubric schemas, feedback generation pipelines, and model-agnostic evaluation interfaces validated against learning science constructs. | Apache 2.0 |
-| **Formative Assessment Benchmark Suite** | Standardized evaluation measuring AI performance across accuracy, fairness, learning progression alignment, and actionability. | Apache 2.0 |
-| **Multimodal Student Response Dataset** | De-identified student work across written, spoken, and drawn modalities — annotated by expert educators and aligned to Common Core and NGSS standards. | CC-BY-4.0 |
-
-### Coming to tekimax-omat
-
-- **`AssessmentPipeline` module** — Configurable claim–evidence–task schemas in TypeScript/Zod for structured formative assessment
-- **Multimodal student input** — Process text, speech, handwriting, and drawings as assessment evidence
-- **`useAssessment()` React hook** — Real-time streaming formative feedback in your UI
-- **`FairnessAuditPlugin`** — Automated demographic performance reporting across student subgroups
-- **`RubricValidatorPlugin`** — Validate AI feedback against rubric schemas and learning progressions
-- **`LearningProgressionPlugin`** — Map student responses to developmental learning sequences
-- **Formative benchmarks** — Run standardized evaluations for accuracy, fairness, actionability, and alignment
-- **Provider-agnostic evaluation** — Benchmark any AI system, regardless of provider
-- **Multimodal dataset access** — Load annotated student response data directly from the SDK
-
-> **Equity-Centered by Design** — OMAT centers multilingual learners, students with disabilities, and underserved communities at every level. Speech and drawing inputs ensure students who can't yet write can still demonstrate what they know.
-
-OMAT follows the vision set forward by [Digital Promise](https://digitalpromise.org) and the [K-12 AI Infrastructure Program](https://k12-ai-infrastructure.org/faq-march-8th-rfp/) — that AI in education deserves shared, open infrastructure built for the students who need it most.
+```bash
+npm install tekimax-omat
+```
 
 ---
 
-## 🚀 The Universal Standard
+## What's in the Box
 
-The **Tekimax SDK** solves the fragmentation of AI APIs. Instead of rewriting your integration code for every provider (handling different request formats, streaming implementations, and error types), you use **one standard interface**.
+| Module | Description |
+|--------|-------------|
+| **Core SDK** | Unified provider interface — OpenAI, Anthropic, Gemini, Ollama, Grok, OpenRouter |
+| **OMAT Assessment Toolkit** | Rubric schemas, formative feedback pipelines, fairness auditing, benchmarks |
+| **ApiSkillPlugin** | Register any REST API as a model-callable tool — CRUD, OpenAPI, or custom |
+| **Security Plugins** | PII redaction, SSRF blocking, audit logging, token-aware context |
+| **React Hooks** | `useChat`, `useAssessment` — SSE streaming with abort support |
+| **Redis Adapter** | Response caching, rate limiting, token budgets, session storage |
 
-- **Write Once, Run Anywhere**: Switch between OpenAI (Cloud) and Ollama (Local) with a single line of config.
-- **Type-Safe**: Full TypeScript support with Zod validation for inputs and outputs.
-- **Multi-Modal**: Text, images, audio, video, and **embeddings** through a unified namespace API.
-- **OpenResponses Catalog**: Fuses `models.dev` metadata into standard `ModelDefinition` objects for reasoning, modalities, and token limits.
-- **Middleware Plugins**: Built-in architecture for Security (`PIIFilterPlugin`), Scalability (`MaxContextOverflowPlugin`), and Telemetry (`LoggerPlugin`).
-- **React Ready**: Includes a `useChat` hook for instant UI integration, complete with SSE streaming.
-- **Redis Adapter** _(optional)_: Response caching, rate limiting, token budgets, and session storage with any Redis client.
+---
 
+## Core SDK
 
-## 💻 Installation
-
-```bash
-# Install core and your desired adapters
-npm install tekimax-ts
-```
-
-## 💻 Usage
-
-### 1. Initialize the Client
-
-The `Tekimax` client is the unified entry point. It wraps any provider (OpenAI, Anthropic, Ollama, etc.) and exposes a consistent multi-modal interface.
+### Providers
 
 ```typescript
-import { 
-  Tekimax, 
-  OpenAIProvider, 
-  AnthropicProvider, 
-  OllamaProvider,
-  GeminiProvider 
-} from 'tekimax-ts'
+import { Tekimax, OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider } from 'tekimax-omat'
 
-// OpenAI
 const client = new Tekimax({
-    provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY })
+  provider: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY })
 })
 
-// Anthropic
+// Switch providers with zero code changes
 const claude = new Tekimax({
-    provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY })
+  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY })
 })
 
-// Ollama (Local)
+// Local / self-hosted
 const local = new Tekimax({
-    provider: new OllamaProvider({ baseUrl: 'http://localhost:11434' })
+  provider: new OllamaProvider({ baseUrl: 'http://localhost:11434' })
 })
 ```
 
-### 2. Multi-Modal Interfaces
-
-The client is organized into cohesive namespaces:
-
-#### Text (Chat)
+### Streaming
 
 ```typescript
-const response = await client.text.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [{ role: 'user', content: 'Hello!' }]
-})
-console.log(response.message.content)
-```
+import { generateText } from 'tekimax-omat'
 
-#### Images (Generation & Vision)
-
-```typescript
-// Generate
-const image = await client.images.generate({
-    model: 'dall-e-3',
-    prompt: 'A cyberpunk city',
-    size: '1024x1024'
+const stream = await generateText(provider, {
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Explain this policy in plain language.' }],
+  stream: true
 })
 
-// Analyze (Vision)
-const analysis = await client.images.analyze({
-    model: 'gpt-4o',
-    image: 'https://example.com/image.png',
-    prompt: 'Describe this scene'
-})
-```
-
-#### Audio (TTS)
-
-```typescript
-const audio = await client.audio.speak({
-    model: 'tts-1',
-    input: 'Hello world',
-    voice: 'alloy'
-})
-```
-
-#### Video (Analysis)
-
-```typescript
-const analysis = await client.videos.analyze({
-    model: 'gemini-1.5-flash',
-    video: 'https://example.com/video.mp4',
-    prompt: 'Summarize this clip'
-})
-```
-
-#### Embeddings
-
-```typescript
-const vectors = await client.text.embed({
-    model: 'text-embedding-3-small',
-    input: ['Hello world', 'Tekimax SDK is awesome']
-})
-console.log(vectors.embeddings)
-```
-
-### 3. Cross-Provider Model Catalog
-
-The SDK strictly implements the **OpenResponses** schema, optionally fusing metadata from `models.dev` so your application always knows what capabilities the active provider supports.
-
-```typescript
-// Returns standard ModelDefinition[] populated with reasoning levels, modal limits, and costs
-const models = await client.provider.getModels?.() 
-
-if (models) {
-    console.log(models.find(m => m.id === 'gpt-4o')?.modalities.input) // ['text', 'image', 'audio', 'video']
+for await (const chunk of stream) {
+  process.stdout.write(chunk.delta ?? '')
 }
 ```
 
-## 🏗️ Monorepo Structure
-
-This repository is managed as a **Turborepo** monorepo.
-
-- **`apps/docs`**: Documentation site (Next.js + Fumadocs).
-- **`apps/demo`**: Demo application.
-- **`packages/tekimax-ts`**: Core SDK and Provider Adapters.
-- **`spec/`**: OpenAPI specification.
-
-### Commands
-
-```bash
-# Build all packages
-npx turbo build
-
-# Run tests
-npx turbo test
-
-# Start Docs Site
-npx turbo dev --filter=docs
-```
-
-## ⚡ Optional Redis Adapter
-
-No extra dependency — bring your own `ioredis`, `@upstash/redis`, or `node-redis`:
+### Multimodal
 
 ```typescript
-import { ResponseCache, RateLimiter, TokenBudget, SessionStore } from 'tekimax-ts'
+// Vision
+const analysis = await client.images.analyze({
+  model: 'gpt-4o',
+  image: 'https://example.com/image.png',
+  prompt: 'Describe this document'
+})
+
+// Audio
+const audio = await client.audio.speak({
+  model: 'tts-1',
+  input: 'Welcome to your case worker portal.',
+  voice: 'alloy'
+})
+
+// Embeddings
+const vectors = await client.text.embed({
+  model: 'text-embedding-3-small',
+  input: ['participant intake form', 'housing assistance application']
+})
+```
+
+---
+
+## OMAT — Open Multimodal Assessment Toolkit
+
+OMAT is the assessment layer of tekimax-omat — designed for any organization that needs structured, equitable, AI-powered evaluation: education, workforce development, healthcare literacy, civic programs.
+
+```typescript
+import { AssessmentPipeline, FairnessAuditPlugin } from 'tekimax-omat'
+
+const pipeline = new AssessmentPipeline({
+  provider,
+  rubric: {
+    task: 'Explain how to apply for rental assistance.',
+    claims: [
+      { id: 'c1', description: 'Identifies the correct agency', weight: 0.4 },
+      { id: 'c2', description: 'Lists required documents', weight: 0.6 },
+    ]
+  },
+  plugins: [new FairnessAuditPlugin({ minGroupSize: 5 })]
+})
+
+const result = await pipeline.assess({
+  id: 'r-001',
+  modality: 'text',
+  text: 'You need to contact the housing authority and bring your lease...'
+})
+
+console.log(result.feedback.strengths)
+console.log(result.feedback.nextSteps)
+console.log(result.score)
+```
+
+### React Hook
+
+```typescript
+import { useAssessment } from 'tekimax-omat/react'
+
+function AssessmentForm() {
+  const { assess, feedback, isStreaming } = useAssessment({ pipeline })
+
+  return (
+    <>
+      <button onClick={() => assess({ modality: 'text', text: input })}>
+        Submit
+      </button>
+      {isStreaming && <Spinner />}
+      {feedback && <FeedbackCard data={feedback} />}
+    </>
+  )
+}
+```
+
+---
+
+## ApiSkillPlugin — Bring Your Own API
+
+Register any REST endpoint as a model-callable tool. No LLM middleware required.
+
+```typescript
+import { ApiSkillPlugin } from 'tekimax-omat'
+
+const skills = new ApiSkillPlugin({
+  baseUrl: 'https://api.yourorg.com',
+  defaultAuth: { type: 'bearer', token: process.env.API_TOKEN! },
+  autoInject: true,  // auto-injects tools on every request
+})
+
+skills.registerEndpoint({
+  name: 'get_participant',
+  description: 'Look up a participant record by ID',
+  method: 'GET',
+  url: '/participants/{id}',
+  pathParams: ['id'],
+})
+
+skills.registerEndpoint({
+  name: 'update_enrollment',
+  description: 'Update a participant enrollment status',
+  method: 'PATCH',
+  url: '/participants/{id}/enrollment',
+  pathParams: ['id'],
+  bodyParams: ['status', 'notes'],
+})
+
+// Or load directly from an OpenAPI 3.x spec
+skills.registerFromOpenApi({
+  specUrl: 'https://api.yourorg.com/openapi.json',
+  auth: { type: 'apikey', header: 'X-API-Key', value: process.env.API_KEY! },
+  include: ['get_participant', 'create_referral'],
+})
+```
+
+---
+
+## Security Plugins
+
+tekimax-omat is built for regulated environments — healthcare, social services, education, public sector.
+
+```typescript
+import { Tekimax, PIIFilterPlugin, LoggerPlugin, AIActionTagPlugin } from 'tekimax-omat'
+
+const client = new Tekimax({
+  provider,
+  plugins: [
+    // Redact SSNs, emails, phones, cards before they reach any AI provider
+    new PIIFilterPlugin(),
+
+    // Sanitize sensitive keys from tool argument logs
+    new LoggerPlugin(),
+
+    // Tag every AI action for audit trail
+    new AIActionTagPlugin({
+      onTag: (tag, ctx) => auditLog.record({ ...tag, userId: ctx.requestOptions?.userId })
+    }),
+  ]
+})
+```
+
+**SSRF protection** is built into both `ProvisionPlugin` and `ApiSkillPlugin` — private IPs (10.x, 172.16-31.x, 192.168.x), loopback (127.x, localhost), and cloud metadata endpoints (169.254.x) are blocked at every layer.
+
+---
+
+## Enterprise Use
+
+tekimax-omat is production-ready for enterprise deployment:
+
+| Requirement | How tekimax-omat addresses it |
+|-------------|-------------------------------|
+| **Zero CVEs** | Chainguard-based images, Trivy scanning on every commit |
+| **Artifact integrity** | Cosign/Sigstore signing on all build artifacts |
+| **PII compliance** | `PIIFilterPlugin` redacts before any data leaves your network |
+| **Audit logging** | `AIActionTagPlugin` + `ApiSkillPlugin` audit hooks |
+| **SSRF prevention** | Private IP blocking in all outbound plugins |
+| **Least-privilege** | Register only the endpoints the model actually needs |
+| **Self-hostable** | Ollama provider + Redis adapter = fully air-gapped |
+| **SBOM / audit reports** | Contact enterprise@tekimax.com |
+
+### Self-Hosting
+
+```bash
+# Air-gapped / on-premise
+docker run -p 11434:11434 ollama/ollama
+```
+
+```typescript
+const client = new Tekimax({
+  provider: new OllamaProvider({ baseUrl: 'http://localhost:11434' }),
+  plugins: [new PIIFilterPlugin(), new LoggerPlugin()]
+})
+```
+
+### Compliance Readiness
+
+tekimax-omat provides controls that support compliance in regulated environments. These are technical controls — organizational policies, BAAs, and formal certifications are your responsibility.
+
+| Regulation | SDK controls that apply | What you still need |
+|------------|------------------------|---------------------|
+| **FERPA** | `FairnessAuditPlugin` never sends demographics to AI providers; `PIIFilterPlugin` redacts student PII; `AIActionTagPlugin` creates audit trails | Data retention policy; FERPA officer designation; incident response procedure |
+| **HIPAA** | `PIIFilterPlugin` redacts PHI before any network call; SSRF blocking prevents exfiltration; audit logging hooks | Business Associate Agreement (BAA) with your AI providers; HIPAA risk assessment; breach notification procedure |
+| **SOC 2** | Chainguard images + Trivy scanning; Cosign artifact signing; secret sanitization in logs; audit trail infrastructure | Formal SOC 2 audit; access control policies; change management documentation |
+
+tekimax-omat is **not certified** under these standards. The controls are designed to help your organization achieve compliance — consult your legal and compliance teams for the full picture.
+
+For SBOM, security audit report, or compliance guidance for your deployment, contact `enterprise@tekimax.com`.
+
+---
+
+## Redis Adapter
+
+```typescript
+import { ResponseCache, RateLimiter, TokenBudget, SessionStore } from 'tekimax-omat'
 import Redis from 'ioredis'
 
 const redis = new Redis(process.env.REDIS_URL)
 
-// Cache AI responses (avoid repeat API costs)
 const cache = new ResponseCache(redis, { ttl: 3600 })
-
-// Enforce rate limits per provider
 const limiter = new RateLimiter(redis, { maxRequests: 60, windowSeconds: 60 })
-
-// Track daily token spend
 const budget = new TokenBudget(redis, { maxTokens: 100_000, periodSeconds: 86400 })
-
-// Conversation state for serverless
 const sessions = new SessionStore(redis, { ttl: 1800 })
 ```
 
-## 🔌 ProvisionPlugin — API Gateway Client
+---
 
-The `ProvisionPlugin` is a generic, endpoint-agnostic API client for authenticated API access. It handles auth injection, rate limiting, and deployment-scoped requests.
+## Monorepo Structure
 
-```typescript
-import { ProvisionPlugin } from 'tekimax-ts'
-
-const plugin = new ProvisionPlugin({
-    apiUrl: 'https://your-api.example.com',
-    apiKey: 'your-api-key',
-    deploymentId: 'dep_abc123',  // Scopes requests to this deployment
-})
-
-// Initialize
-await plugin.initialize()
-
-// Create typed API namespaces
-const naics = plugin.api('/api/naics')
-const ocr = plugin.api('/api/ocr')
-
-// Use the namespace
-const results = await naics.get('/search', { q: 'software' })
-const sectors = await naics.get('/sectors')
-const code = await naics.get('/codes/541511')
-
-// OCR
-const extracted = await ocr.post('/', formData)
+```
+tekimax-ts/
+├── packages/tekimax-ts/     # Core SDK (published as tekimax-omat)
+│   └── src/
+│       ├── core/            # generate, types, cost, retry, middleware, cache
+│       ├── providers/       # OpenAI, Anthropic, Gemini, Ollama, Grok, OpenRouter
+│       ├── plugins/         # All middleware plugins
+│       ├── assessment/      # OMAT assessment pipeline
+│       ├── benchmarks/      # OMAT benchmark suite
+│       └── react/           # useChat, useAssessment hooks
+├── apps/docs/               # Docs site (Next.js + Fumadocs)
+└── apps/demo/               # Demo application
 ```
 
-### Features
-- **Auth Injection**: Automatically adds `X-API-Key` and `X-Deployment-ID` headers
-- **Rate Limiting**: Built-in client-side rate limiting (configurable)
-- **Request Timeouts**: Configurable timeout per request
-- **Lifecycle Hooks**: `initialize()` and `destroy()` for resource management
-- **Endpoint Agnostic**: Works with any REST API — no domain-specific code
+### Dev Commands
 
-### Security Model
+```bash
+# Install
+npm install
 
-| Header | Purpose |
-|--------|---------|
-| `X-API-Key` | Authenticates the request |
-| `X-Deployment-ID` | Identifies the deployment + authorizes API access |
+# Build all packages
+npx turbo build
 
-The API server validates that the deployment exists and has the requested API feature enabled in its `enabledApis` list.
+# Type check
+npx turbo typecheck
 
-## 🗺️ Roadmap
+# Start docs
+npx turbo dev --filter=docs
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Middleware Plugins** | Pre-built and custom lifecycle hooks for Security, Telemetry, and Scalability. | ✅ Shipped |
-| **OpenResponses Catalog** | Provider abstraction parsing `models.dev` metadata for token limits, reasoning capabilities, and allowed modalities. | ✅ Shipped |
-| **Real-time SSE Streaming** | Native SDK token streaming, `StreamChunk` event typing, and full React hooks support (`useChat`). | ✅ Shipped |
-| **Redis Adapter** | Optional response caching, rate limiting, token budget tracking, and session storage with any Redis client. | ✅ Shipped |
-| **Observability** | Telemetry and tracing via `plugins` architecture. | ✅ Shipped |
-| **ProvisionPlugin** | Endpoint-agnostic API gateway client with deployment-scoped auth. | ✅ Shipped |
-| **OCR Service** | Multi-model document extraction (Gemini, PaddleOCR, Ollama GLM-OCR). | ✅ Shipped |
-| **OMAT Assessment Pipeline** | Rubric schemas, feedback generation, model-agnostic evaluation. | 🔨 In Development |
-| **OMAT Benchmark Suite** | Accuracy, fairness, actionability, learning progression alignment. | 🔨 In Development |
-| **OMAT Multimodal Dataset** | Annotated student responses across text, speech, and drawing. | 🔨 In Development |
-| **`useAssessment()` Hook** | Real-time formative feedback React hook. | 🔨 In Development |
-| **FairnessAuditPlugin** | Automated demographic performance reporting. | 🔨 In Development |
-| **Batch API** | Queue thousands of requests and retrieve results asynchronously. | 🔜 Planned |
-| **Edge Runtime** | Cloudflare Workers / Deno support. | 🔜 Planned |
-| **Assistants / Threads** | Stateful conversation management with persistence. | 🔜 Planned |
-| **Fine-tuning API** | Programmatic fine-tuning via internal and integrated APIs. | 🔜 Planned |
+# Run security scan
+npx turbo scan
+```
 
-> **Want to help?** Pick a feature and open a PR, or join the discussion in [GitHub Issues](https://github.com/TEKIMAX/tekimax-omat/issues).
+---
 
-## 📜 License
+## Roadmap
 
-- **SDK & Code** — [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
-- **Dataset & Documentation** — [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+| Feature | Status |
+|---------|--------|
+| Unified provider interface (OpenAI, Anthropic, Gemini, Ollama, Grok, OpenRouter) | ✅ Shipped |
+| SSE streaming + React `useChat` hook | ✅ Shipped |
+| Middleware plugin architecture | ✅ Shipped |
+| Redis adapter (cache, rate limit, budget, sessions) | ✅ Shipped |
+| `PIIFilterPlugin` — ReDoS-safe, ContentPart[] support | ✅ Shipped |
+| `AIActionTagPlugin` — audit trail | ✅ Shipped |
+| `ProvisionPlugin` — SSRF-hardened API gateway | ✅ Shipped |
+| `ApiSkillPlugin` — register any REST API as a model tool | ✅ Shipped |
+| OMAT `AssessmentPipeline` — rubric schemas, feedback generation | ✅ Shipped |
+| `FairnessAuditPlugin` — demographic equity reporting | ✅ Shipped |
+| `RubricValidatorPlugin` + `LearningProgressionPlugin` | ✅ Shipped |
+| OMAT benchmark suite | ✅ Shipped |
+| `useAssessment()` React hook | ✅ Shipped |
+| Edge runtime (Cloudflare Workers / Deno) | Planned |
+| Batch API | Planned |
+| Fine-tuning API | Planned |
 
-## 💖 Support
+---
 
-Tekimax is open source. If you find it valuable, please consider [becoming a sponsor](https://github.com/sponsors/TEKIMAX) to support long-term maintenance.
+## Contributing
+
+See [CONTRIBUTING.md](packages/tekimax-ts/CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](packages/tekimax-ts/CODE_OF_CONDUCT.md).
+
+We especially welcome contributions from organizations working in education, healthcare, workforce development, and civic technology.
+
+---
+
+## License
+
+- **SDK & Code** — [Apache 2.0](LICENSE)
+- **Documentation** — [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+
+---
+
+## Support
+
+- **Docs**: https://tekimax.com/docs
+- **Issues**: [GitHub Issues](https://github.com/TEKIMAX/tekimax-omat/issues)
+- **Enterprise**: enterprise@tekimax.com
+- **Security**: security@tekimax.com
+- **Sponsor**: [GitHub Sponsors](https://github.com/sponsors/TEKIMAX)
 
 ---
 
 <div align="center">
-  <p>Built with ❤️ by <a href="https://tekimax.com">TEKIMAX</a> — Human-Centered AI Infrastructure</p>
+  <p>Built by <a href="https://tekimax.com">TEKIMAX</a> — AI infrastructure for organizations doing public good</p>
 </div>

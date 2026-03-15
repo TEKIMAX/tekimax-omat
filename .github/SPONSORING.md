@@ -1,30 +1,59 @@
-# Become a sponsor to Tekimax
+# Support tekimax-omat
 
-**Tekimax** builds and maintains the Universal AI Adapter Layer, standardizing the fragmented landscape of LLM APIs into a single, type-safe interface.
+**tekimax-omat** is open-source AI infrastructure built for organizations doing public good — nonprofits, healthcare providers, workforce development programs, civic technology teams, and educators.
 
-Our open source software is written in TypeScript and designed for the Edge, enabling developers to build AI applications that run anywhere—from Vercel Edge Functions to Cloudflare Workers and Node.js.
+We believe the organizations that need AI the most are often the ones with the least resources to build it. That's what this project exists to fix.
 
-### For Companies and Businesses
+---
 
-As a Tekimax Sponsor, your company is recognized as one that invests in the future of standardized AI infrastructure. It's a badge that represents your commitment to type-safety, zero-dependency architecture, and the open ecosystem.
+## Why Sponsor
 
-You receive premium perks based on your sponsorship tier including:
-- **Logo Placement**: Your logo on the Tekimax landing page and README.
-- **Priority Support**: Dedicated channels for issue resolution.
-- **Consultation**: Direct access to the core team for architectural guidance.
-- **Influence**: Voting rights on the adapter roadmap (e.g., "Add Mistral Support next").
+Your sponsorship directly funds:
 
-### For Developers
+- **Security hardening** — zero-CVE artifacts, privacy-first plugins, SSRF protection
+- **OMAT toolkit** — fair, equitable assessment infrastructure for anyone who needs it
+- **Provider coverage** — same-week support when OpenAI, Anthropic, or Google ship new models
+- **Documentation** — real-world examples for healthcare, workforce, civic, and education contexts
+- **Maintenance** — dependency updates, CVE patches, TypeScript upgrades
 
-By sponsoring Tekimax, you help ensure that the tools you rely on remain free, maintained, and up-to-date with the rapidly changing AI landscape.
+---
 
-Why support us?
-1.  **Rapid Updates**: We prioritize day-one support for major model releases (like GPT-5 or Claude 4) to keep your infrastructure cutting-edge.
-2.  **Quality**: We maintain 100% test coverage and zero-dependency purity.
-3.  **Sustainability**: Your support allows us to work on this full-time.
+## For Companies and Enterprises
 
-### Tiers
+Sponsoring tekimax-omat gives your organization:
 
-Each of the sponsorship tiers on this page has specific perks listed. If you believe your company could become a sponsor, please reach out or select a tier!
+| Tier | Perks |
+|------|-------|
+| **Bronze** | Logo on README and docs site |
+| **Silver** | Logo + priority issue triage |
+| **Gold** | Logo + priority support + architectural consultation |
+| **Platinum** | Logo + dedicated support channel + roadmap input + co-branding on case study |
 
-_Built with ❤️ for the Type-Safe Future._
+All paid sponsors receive:
+- Acknowledgment in release notes
+- Early access to new features
+- Direct line to the core team
+
+---
+
+## For Mission-Aligned Organizations
+
+If your organization works in **education, healthcare, social services, workforce development, or civic technology** and uses tekimax-omat in production, we especially want to hear from you — even small sponsorships go a long way, and your use case may shape the roadmap.
+
+---
+
+## For Individual Developers
+
+Even $5/month makes a difference for an open-source project maintained by a small team. You help ensure that the tools you rely on stay free, secure, and current.
+
+---
+
+## Sponsor Now
+
+- [GitHub Sponsors](https://github.com/sponsors/TEKIMAX)
+
+Or contact us at sponsor@tekimax.com to discuss a custom arrangement.
+
+---
+
+*Built by [TEKIMAX](https://tekimax.com) — AI infrastructure for the public good.*
