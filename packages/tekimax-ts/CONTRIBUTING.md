@@ -1,6 +1,6 @@
 # Contributing to tekimax-omat
 
-Thank you for contributing to open AI infrastructure for the public good. We especially welcome contributions from people working in education, healthcare, workforce development, nonprofit technology, and civic tech.
+Thank you for contributing to tekimax-omat, an open-source AI SDK for the public good. We especially welcome contributions from people working in education, healthcare, workforce development, nonprofit technology, and civic tech.
 
 ---
 

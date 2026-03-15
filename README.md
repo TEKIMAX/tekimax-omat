@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TEKIMAX/tekimax-omat/main/apps/docs/public/tekimax-logo.png" alt="TEKIMAX OMAT" width="120" />
   <h1>tekimax-omat</h1>
-  <p><strong>Open AI Infrastructure for the Public Good</strong></p>
+  <p><strong>Open-Source AI SDK for the Public Good</strong></p>
 
   <p>
     <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
@@ -380,5 +380,5 @@ We especially welcome contributions from organizations working in education, hea
 ---
 
 <div align="center">
-  <p>Built by <a href="https://tekimax.com">TEKIMAX</a> — AI infrastructure for organizations doing public good</p>
+  <p>Built by <a href="https://tekimax.com">TEKIMAX</a> — open-source AI SDK for organizations doing public good</p>
 </div>

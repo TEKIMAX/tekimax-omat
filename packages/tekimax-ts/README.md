@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TEKIMAX/tekimax-omat/main/apps/docs/public/tekimax-logo.png" alt="TEKIMAX OMAT" width="120" />
   <h1>tekimax-omat</h1>
-  <p><strong>Human-Centered AI Infrastructure</strong></p>
+  <p><strong>Human-Centered AI SDK</strong></p>
   
   <p>
     <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
@@ -242,5 +242,5 @@ tekimax-omat is open source. If you find it valuable, please consider [becoming 
 ---
 
 <div align="center">
-  <p>Built with ❤️ by <a href="https://tekimax.com">TEKIMAX</a> — Human-Centered AI Infrastructure</p>
+  <p>Built with ❤️ by <a href="https://tekimax.com">TEKIMAX</a> — Human-Centered AI SDK</p>
 </div>
